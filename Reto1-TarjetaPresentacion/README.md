@@ -161,6 +161,5 @@ GitHub tenía commits que yo no tenía en local. **Solución:** `git add -A`, `g
 
 <div align="center">
 
-Hecho con ❤️ y mucho ☕ por **Daniel Baeza**
 
 </div>
