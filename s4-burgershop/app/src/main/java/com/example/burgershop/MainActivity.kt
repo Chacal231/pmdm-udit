@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -14,6 +15,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -22,14 +26,22 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.burgershop.ui.theme.BurgershopTheme
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,11 +50,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             //MaterialTheme: aplica los colores
             //tipografias por defecto a todo lo que hay dentro
-            MaterialTheme{
+            MaterialTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize()
                 ) {
-                 CatalogoHamburguesas(catalogoHamburguesas)
+                    PantallaPrincipal()
                 }
             }
         }
@@ -54,9 +66,9 @@ class MainActivity : ComponentActivity() {
 // MODELO DE DATOS
 //EL "molde" que define que informacion tiene cada producto
 
-data class Producto (
-    val nombre : String,
-    val precio : String,
+data class Producto(
+    val nombre: String,
+    val precio: String,
     val imanResId: Int //el identificador de imagen  en res/drawable
 )
 
@@ -74,25 +86,29 @@ val catalogoHamburguesas = listOf(
         "BBQ Bacon",
         "7.90€",
         R.drawable.burger_bbq
-    ), Producto(
+    ),
+    Producto(
         "Doble Carne",
         "8,50€",
         R.drawable.burger_doble
-    ), Producto(
+    ),
+    Producto(
         "Vegetariana",
         "7,20€",
         R.drawable.burger_vegetariana
-    ), Producto(
+    ),
+    Producto(
         "Picante Jalapeño",
         "7,80€",
         R.drawable.burger_picante
-    ), Producto(
+    ),
+    Producto(
         "Pollo Crispy",
         "6,90€",
         R.drawable.burger_pollo
     ),
 
-)
+    )
 
 //CATALOGO
 //LazyColumn: pinta una lista que se puede recorrer en scroll
@@ -100,7 +116,7 @@ val catalogoHamburguesas = listOf(
 // (por eso se llama "lazy", perezoso): es eficiente aunque la lista tenga cientos de elementos
 @Composable
 fun CatalogoHamburguesas(productos: List<Producto>) {
-    LazyColumn(
+    /*LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp), // margen alrededor de toda la lista
         verticalArrangement = Arrangement.spacedBy(16.dp) // espacio entre una tarjeta y la siguiente
@@ -108,12 +124,24 @@ fun CatalogoHamburguesas(productos: List<Producto>) {
         items(productos) { producto ->
             TarjetaProducto(producto)
         }
+    }*/
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 250.dp),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        items(productos) { producto ->
+            TarjetaProducto(producto)
+        }
     }
+
 }
+
 //TARJETA DE PRODUCTO
 //Una "caja" (card) con imagen arriba y datos + boton
 @Composable
-fun TarjetaProducto(producto: Producto){
+fun TarjetaProducto(producto: Producto) {
 
     //Card: una superficie elevada, con sombra y bordes redondeados
     // por defecto - ideal para agrupar visualmente la info de un producto
@@ -142,7 +170,9 @@ fun TarjetaProducto(producto: Producto){
                 Text(
                     text = producto.nombre,
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    maxLines=1,
+                    overflow = TextOverflow.Ellipsis
                 )
 
                 Spacer(modifier = Modifier.height(4.dp)) // hueco pequeño
@@ -164,6 +194,33 @@ fun TarjetaProducto(producto: Producto){
                 }
             }
         }
+    }
+
+}
+
+// PANTALLA DE PORTADA
+@Composable
+fun PantallaPrincipal() {
+
+    //remember + mustableStateOf: crea una variable que Compose vigila
+    //Cuando su valor, Compose vuelve a dibujar la pantalla solo,
+    // sin que tengas que hacer nada más
+    var mostrarPortada by remember { mutableStateOf(true) }
+    // LaunchEffect: Lanza unua tarea que se ejecuta una sola vez
+    // cuando la pantalla aparece. Debe esperar 1.5s y luego cambia de estado
+    // para ocultar esa pantalla
+
+    LaunchedEffect(Unit) {
+        delay(1500)
+        mostrarPortada=false
+    }
+
+    if(mostrarPortada) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center){
+            Text("🍔 BurguerShop", fontSize = 32.sp, fontWeight = FontWeight.Bold)
+        }
+    } else {
+        CatalogoHamburguesas(productos = catalogoHamburguesas)
     }
 
 }
