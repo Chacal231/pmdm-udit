@@ -2,10 +2,9 @@ package com.example.filtro400
 
 // "object" = una única instancia, sin necesidad de crearla con ReglaBloqueo().
 // Aquí vive la decisión de bloquear o no: sin Android, sin pantalla.
+// Fase 2: los prefijos ya no están escritos en el código, llegan como parámetro
+// (los lee la base de datos). Así esta clase sigue siendo fácil de probar.
 object ReglaBloqueo {
-
-    // El prefijo comercial que queremos bloquear.
-    private const val PREFIJO_BLOQUEADO = "400"
 
     // Un mismo número puede llegar de varias formas:
     // "400123456", "+34400123456", "0034 400 123 456", "+34 400 123 456"...
@@ -20,8 +19,14 @@ object ReglaBloqueo {
         }
     }
 
-    // La regla de la Fase 1: bloquear si empieza por 400.
-    fun debeBloquearse(numero: String): Boolean {
-        return normalizar(numero).startsWith(PREFIJO_BLOQUEADO)
+    // Limpia el prefijo que escribe el usuario: solo dígitos (admite "+34 400").
+    fun limpiarPrefijo(texto: String): String =
+        normalizar(texto).filter { it.isDigit() }
+
+    // La regla de la Fase 2: bloquear si el número empieza por ALGUNO de los
+    // prefijos activos. Número oculto (vacío) -> no se bloquea.
+    fun debeBloquearse(numero: String, prefijos: List<String>): Boolean {
+        val n = normalizar(numero)
+        return n.isNotEmpty() && prefijos.any { it.isNotEmpty() && n.startsWith(it) }
     }
 }

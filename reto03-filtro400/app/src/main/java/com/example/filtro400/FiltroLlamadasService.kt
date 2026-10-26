@@ -9,6 +9,10 @@ import android.util.Log
 // Solo funciona con números que NO están en la agenda del usuario.
 class FiltroLlamadasService : CallScreeningService() {
 
+    // "by lazy": se crea la primera vez que se usa. Hace falta porque el
+    // contexto del servicio aún no existe cuando se construye la clase.
+    private val db by lazy { FiltrosDbHelper(applicationContext) }
+
     // Android llama a este método automáticamente por cada llamada.
     override fun onScreenCall(callDetails: Call.Details) {
 
@@ -20,7 +24,11 @@ class FiltroLlamadasService : CallScreeningService() {
         // oculto, viene vacío y no lo bloqueamos.
         val numero = callDetails.handle?.schemeSpecificPart.orEmpty()
 
-        val bloquear = esEntrante && ReglaBloqueo.debeBloquearse(numero)
+        // Fase 2: leemos los prefijos activos de SQLite EN CADA LLAMADA.
+        // Así, cualquier cambio hecho en la pantalla se aplica al instante,
+        // sin reiniciar nada.
+        val bloquear = esEntrante &&
+                ReglaBloqueo.debeBloquearse(numero, db.prefijosActivos())
 
         // Solo para depurar: ver la decisión en Logcat (filtra por "Filtro400").
         // Quítalo en una versión final: un número de teléfono es dato personal.
