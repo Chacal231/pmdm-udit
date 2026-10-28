@@ -60,10 +60,14 @@ class FiltrosDbHelper(context: Context) :
     }
 
     // CREATE: devuelve false si el prefijo ya existe (la columna es UNIQUE).
-    fun insertar(prefijo: String): Boolean {
+    fun insertar(prefijo: String): Boolean = insertarConEstado(prefijo, true)
+
+    // CREATE indicando si nace activo o no. Lo usa "Deshacer" al borrar,
+    // para devolver el filtro tal y como estaba.
+    fun insertarConEstado(prefijo: String, activo: Boolean): Boolean {
         val valores = ContentValues().apply {
             put(COL_PREFIJO, prefijo)
-            put(COL_ACTIVO, 1)
+            put(COL_ACTIVO, if (activo) 1 else 0)
         }
         return writableDatabase.insert(TABLA, null, valores) != -1L
     }

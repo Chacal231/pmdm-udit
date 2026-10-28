@@ -2,8 +2,8 @@ package com.example.filtro400
 
 // "object" = una única instancia, sin necesidad de crearla con ReglaBloqueo().
 // Aquí vive la decisión de bloquear o no: sin Android, sin pantalla.
-// Fase 2: los prefijos ya no están escritos en el código, llegan como parámetro
-// (los lee la base de datos). Así esta clase sigue siendo fácil de probar.
+// Los prefijos llegan como parámetro (los lee la base de datos), así que
+// esta clase es fácil de probar con tests unitarios.
 object ReglaBloqueo {
 
     // Un mismo número puede llegar de varias formas:
@@ -23,10 +23,15 @@ object ReglaBloqueo {
     fun limpiarPrefijo(texto: String): String =
         normalizar(texto).filter { it.isDigit() }
 
-    // La regla de la Fase 2: bloquear si el número empieza por ALGUNO de los
-    // prefijos activos. Número oculto (vacío) -> no se bloquea.
-    fun debeBloquearse(numero: String, prefijos: List<String>): Boolean {
+    // Devuelve el prefijo que coincide con el número, o null si ninguno.
+    // Número oculto (vacío) -> null: no se bloquea.
+    fun prefijoCoincidente(numero: String, prefijos: List<String>): String? {
         val n = normalizar(numero)
-        return n.isNotEmpty() && prefijos.any { it.isNotEmpty() && n.startsWith(it) }
+        if (n.isEmpty()) return null
+        return prefijos.firstOrNull { it.isNotEmpty() && n.startsWith(it) }
     }
+
+    // Misma firma que antes: la usa el servicio de llamadas.
+    fun debeBloquearse(numero: String, prefijos: List<String>): Boolean =
+        prefijoCoincidente(numero, prefijos) != null
 }
