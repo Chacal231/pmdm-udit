@@ -1,6 +1,5 @@
 package com.example.filtro400.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -53,12 +52,13 @@ private val EsquemaClaro = lightColorScheme(
     surfaceContainerHighest = Color(0xFFFFFFFF),
 )
 
-// Tema único de la app. Sigue el modo claro/oscuro del sistema.
+// Tema único de la app. Quien lo usa decide si va en oscuro, según el modo que
+// haya elegido el usuario (ver ModoTema).
 // "Typography" viene de Type.kt (mismo paquete).
 @Composable
-fun EscudoTheme(content: @Composable () -> Unit) {
+fun EscudoTheme(oscuro: Boolean, content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = if (isSystemInDarkTheme()) EsquemaOscuro else EsquemaClaro,
+        colorScheme = if (oscuro) EsquemaOscuro else EsquemaClaro,
         typography = Typography,
         content = content
     )

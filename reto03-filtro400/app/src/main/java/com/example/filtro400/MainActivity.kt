@@ -2,14 +2,18 @@ package com.example.filtro400
 
 import android.app.role.RoleManager
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.filtro400.ui.theme.EscudoTheme
+import com.example.filtro400.ui.theme.ModoTema
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -38,12 +43,39 @@ class MainActivity : ComponentActivity() {
     // por ejemplo después de cambiarlo en los ajustes del sistema.
     private var refresco by mutableIntStateOf(0)
 
+    // "by lazy": el contexto de la Activity aún no existe al construir la clase.
+    private val preferencias by lazy { Preferencias(applicationContext) }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            EscudoTheme {
+            // El tema se decide aquí, por encima de EscudoTheme, porque al
+            // cambiarlo tiene que redibujarse toda la app.
+            var modoTema by remember { mutableStateOf(preferencias.modoTema) }
+            val oscuro = modoTema.usaOscuro(isSystemInDarkTheme())
+
+            // Las barras del sistema no dependen de Compose: hay que decirle a
+            // Android de qué color poner sus iconos para que se vean sobre el
+            // tema elegido, que puede no coincidir con el del sistema.
+            LaunchedEffect(oscuro) {
+                val estilo = if (oscuro) {
+                    SystemBarStyle.dark(Color.TRANSPARENT)
+                } else {
+                    SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+                }
+                enableEdgeToEdge(statusBarStyle = estilo, navigationBarStyle = estilo)
+            }
+
+            EscudoTheme(oscuro = oscuro) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    AppRaiz(refresco)
+                    AppRaiz(
+                        refresco = refresco,
+                        modoTema = modoTema,
+                        onCambiarTema = { nuevo ->
+                            modoTema = nuevo
+                            preferencias.modoTema = nuevo
+                        }
+                    )
                 }
             }
         }
@@ -61,7 +93,7 @@ class MainActivity : ComponentActivity() {
 // "Deshacer" de un borrado sigue funcionando aunque cambiemos de sección).
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppRaiz(refresco: Int) {
+fun AppRaiz(refresco: Int, modoTema: ModoTema, onCambiarTema: (ModoTema) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarState = remember { SnackbarHostState() }
@@ -139,6 +171,8 @@ fun AppRaiz(refresco: Int) {
             Seccion.ACTIVIDAD -> PantallaActividad(padding = padding)
             Seccion.AJUSTES -> PantallaAjustes(
                 padding = padding,
+                modoTema = modoTema,
+                onCambiarTema = onCambiarTema,
                 onAcerca = { verAcerca = true }
             )
         }
