@@ -55,10 +55,11 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// Navegación sencilla sin librerías: un booleano decide qué pantalla se ve.
+// Navegación sencilla sin librerías: un valor del enum Seccion decide qué se ve.
 // El estado compartido vive aquí, en la raíz, y no dentro de una pantalla:
 // así sobrevive cuando esa pantalla deja de mostrarse (por ejemplo, el
-// "Deshacer" de un borrado sigue funcionando aunque cambiemos de pantalla).
+// "Deshacer" de un borrado sigue funcionando aunque cambiemos de sección).
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppRaiz(refresco: Int) {
     val context = LocalContext.current
@@ -74,19 +75,73 @@ fun AppRaiz(refresco: Int) {
         filtros.addAll(db.obtenerTodos())
     }
 
+    // rememberSaveable: la sección actual sobrevive al girar el móvil.
+    var seccion by rememberSaveable { mutableStateOf(Seccion.INICIO) }
     var verAcerca by rememberSaveable { mutableStateOf(false) }
+    // El botón "+ Añadir" está en la raíz, pero el diálogo lo dibuja Reglas.
+    var anadiendo by remember { mutableStateOf(false) }
+
     if (verAcerca) {
         PantallaAcerca(onVolver = { verAcerca = false })
-    } else {
-        PantallaFiltro(
-            rol = rol,
-            db = db,
-            filtros = filtros,
-            recargar = recargar,
-            snackbarState = snackbarState,
-            scope = scope,
-            onAcerca = { verAcerca = true }
-        )
+        return
+    }
+
+    // El botón "atrás" lleva a Inicio; desde Inicio, Android cierra la app.
+    BackHandler(enabled = seccion != Seccion.INICIO) { seccion = Seccion.INICIO }
+
+    // Un único Scaffold para toda la app. Con uno por pantalla, cada uno sumaría
+    // su propio margen para las barras del sistema y el contenido quedaría descolocado.
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        if (seccion == Seccion.INICIO) stringResource(R.string.app_name)
+                        else seccion.etiqueta,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            )
+        },
+        bottomBar = {
+            NavigationBar {
+                Seccion.entries.forEach { opcion ->
+                    NavigationBarItem(
+                        selected = opcion == seccion,
+                        onClick = { seccion = opcion },
+                        icon = { Text(opcion.emoji) },
+                        label = { Text(opcion.etiqueta) }
+                    )
+                }
+            }
+        },
+        snackbarHost = { SnackbarHost(snackbarState) },
+        floatingActionButton = {
+            if (seccion == Seccion.REGLAS) {
+                ExtendedFloatingActionButton(onClick = { anadiendo = true }) {
+                    Text("+ Añadir")
+                }
+            }
+        }
+    ) { padding ->
+        when (seccion) {
+            Seccion.INICIO -> PantallaInicio(padding = padding, rol = rol, filtros = filtros)
+            Seccion.REGLAS -> PantallaReglas(
+                padding = padding,
+                db = db,
+                filtros = filtros,
+                recargar = recargar,
+                snackbarState = snackbarState,
+                scope = scope,
+                anadiendo = anadiendo,
+                onCerrarAnadir = { anadiendo = false }
+            )
+            Seccion.ACTIVIDAD -> PantallaActividad(padding = padding)
+            Seccion.AJUSTES -> PantallaAjustes(
+                padding = padding,
+                onAcerca = { verAcerca = true }
+            )
+        }
     }
 }
 
@@ -135,106 +190,99 @@ fun rememberEstadoRol(refresco: Int): EstadoRol {
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+// Inicio: el estado del filtro y el probador de números.
+// Toda la pantalla es una lista: así hace scroll en móviles pequeños
+// y cuando el teclado está abierto.
 @Composable
-fun PantallaFiltro(
-    rol: EstadoRol,
+fun PantallaInicio(padding: PaddingValues, rol: EstadoRol, filtros: List<Filtro>) {
+    LazyColumn(
+        modifier = Modifier
+            .padding(padding)
+            .fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            TarjetaEstado(
+                activo = rol.activo,
+                onActivar = rol.solicitar,
+                onAjustes = rol.abrirAjustes
+            )
+        }
+
+        item {
+            // La lista viene de la raíz: lo que cambies en Reglas se aplica aquí.
+            TarjetaProbador(
+                prefijosActivos = filtros.filter { it.activo }.map { it.prefijo }
+            )
+        }
+    }
+}
+
+// Reglas: la lista de prefijos y sus diálogos de añadir, editar y borrar.
+@Composable
+fun PantallaReglas(
+    padding: PaddingValues,
     db: FiltrosDbHelper,
     filtros: List<Filtro>,
     recargar: () -> Unit,
     snackbarState: SnackbarHostState,
     scope: CoroutineScope,
-    onAcerca: () -> Unit
+    anadiendo: Boolean,
+    onCerrarAnadir: () -> Unit
 ) {
-    // Diálogo de añadir/editar. Si filtroEditando es null, estamos añadiendo.
-    var dialogoVisible by remember { mutableStateOf(false) }
+    // Filtro que se está editando (null si no se edita ninguno).
     var filtroEditando by remember { mutableStateOf<Filtro?>(null) }
     // Filtro pendiente de confirmar su borrado.
     var filtroABorrar by remember { mutableStateOf<Filtro?>(null) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(stringResource(R.string.app_name), fontWeight = FontWeight.Bold)
-                },
-                actions = { TextButton(onClick = onAcerca) { Text("Acerca de") } }
+    LazyColumn(
+        modifier = Modifier
+            .padding(padding)
+            .fillMaxSize(),
+        // Margen inferior amplio para que el botón "+ Añadir" no tape la última tarjeta.
+        contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 96.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            Text(
+                "Prefijos bloqueados",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
             )
-        },
-        snackbarHost = { SnackbarHost(snackbarState) },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(onClick = {
-                filtroEditando = null
-                dialogoVisible = true
-            }) { Text("+ Añadir") }
         }
-    ) { padding ->
-        // Toda la pantalla es una lista: así hace scroll en móviles pequeños
-        // y cuando el teclado está abierto.
-        LazyColumn(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize(),
-            contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 96.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            item {
-                TarjetaEstado(
-                    activo = rol.activo,
-                    onActivar = rol.solicitar,
-                    onAjustes = rol.abrirAjustes
-                )
-            }
 
+        if (filtros.isEmpty()) {
             item {
-                TarjetaProbador(
-                    prefijosActivos = filtros.filter { it.activo }.map { it.prefijo }
-                )
-            }
-
-            item {
-                Text(
-                    "Prefijos bloqueados",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            if (filtros.isEmpty()) {
-                item {
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text("📵", style = MaterialTheme.typography.displaySmall)
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("Todavía no bloqueas ningún prefijo", fontWeight = FontWeight.Bold)
-                            Text(
-                                "Pulsa + Añadir para bloquear las llamadas que empiecen por un prefijo.",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("📵", style = MaterialTheme.typography.displaySmall)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Todavía no bloqueas ningún prefijo", fontWeight = FontWeight.Bold)
+                        Text(
+                            "Pulsa + Añadir para bloquear las llamadas que empiecen por un prefijo.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
                     }
                 }
             }
+        }
 
-            items(filtros, key = { it.id }) { filtro ->
-                TarjetaFiltro(
-                    filtro = filtro,
-                    onCambiarActivo = {
-                        db.cambiarActivo(filtro.id, it)
-                        recargar()
-                    },
-                    onEditar = {
-                        filtroEditando = filtro
-                        dialogoVisible = true
-                    },
-                    onBorrar = { filtroABorrar = filtro }
-                )
-            }
+        items(filtros, key = { it.id }) { filtro ->
+            TarjetaFiltro(
+                filtro = filtro,
+                onCambiarActivo = {
+                    db.cambiarActivo(filtro.id, it)
+                    recargar()
+                },
+                onEditar = { filtroEditando = filtro },
+                onBorrar = { filtroABorrar = filtro }
+            )
         }
     }
 
@@ -272,12 +320,16 @@ fun PantallaFiltro(
     }
 
     // ---- Diálogo de añadir / editar ----
-    if (dialogoVisible) {
-        val editando = filtroEditando
+    val editando = filtroEditando
+    if (anadiendo || editando != null) {
+        val cerrar: () -> Unit = {
+            filtroEditando = null
+            onCerrarAnadir()
+        }
         DialogoPrefijo(
             titulo = if (editando == null) "Nuevo prefijo" else "Editar prefijo",
             valorInicial = editando?.prefijo.orEmpty(),
-            onCancelar = { dialogoVisible = false },
+            onCancelar = cerrar,
             // Devuelve true si se guardó bien, false si hay error (vacío o repetido).
             onGuardar = { texto ->
                 val prefijo = ReglaBloqueo.limpiarPrefijo(texto)
@@ -288,7 +340,7 @@ fun PantallaFiltro(
                 }
                 if (ok) {
                     recargar()
-                    dialogoVisible = false
+                    cerrar()
                 }
                 ok
             }
