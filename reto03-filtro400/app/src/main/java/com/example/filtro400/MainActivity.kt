@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.filtro400.ui.theme.EscudoTheme
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -55,53 +56,101 @@ class MainActivity : ComponentActivity() {
 }
 
 // Navegación sencilla sin librerías: un booleano decide qué pantalla se ve.
+// El estado compartido vive aquí, en la raíz, y no dentro de una pantalla:
+// así sobrevive cuando esa pantalla deja de mostrarse (por ejemplo, el
+// "Deshacer" de un borrado sigue funcionando aunque cambiemos de pantalla).
 @Composable
 fun AppRaiz(refresco: Int) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbarState = remember { SnackbarHostState() }
+    val rol = rememberEstadoRol(refresco)
+
+    // Base de datos y lista de filtros. Se leen de SQLite al abrir la app.
+    val db = remember { FiltrosDbHelper(context) }
+    val filtros = remember { mutableStateListOf<Filtro>().apply { addAll(db.obtenerTodos()) } }
+    val recargar: () -> Unit = {
+        filtros.clear()
+        filtros.addAll(db.obtenerTodos())
+    }
+
     var verAcerca by rememberSaveable { mutableStateOf(false) }
     if (verAcerca) {
         PantallaAcerca(onVolver = { verAcerca = false })
     } else {
-        PantallaFiltro(refresco = refresco, onAcerca = { verAcerca = true })
+        PantallaFiltro(
+            rol = rol,
+            db = db,
+            filtros = filtros,
+            recargar = recargar,
+            snackbarState = snackbarState,
+            scope = scope,
+            onAcerca = { verAcerca = true }
+        )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+// Agrupa lo que las pantallas necesitan saber y hacer con el rol de filtrado.
+class EstadoRol(
+    val activo: Boolean,
+    val solicitar: () -> Unit,
+    val abrirAjustes: () -> Unit
+)
+
+// Función "remember...": concentra la lógica del rol en un solo sitio para que
+// cualquier pantalla pueda reutilizarla sin repetir el código de RoleManager.
 @Composable
-fun PantallaFiltro(refresco: Int, onAcerca: () -> Unit) {
+fun rememberEstadoRol(refresco: Int): EstadoRol {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val snackbarState = remember { SnackbarHostState() }
 
     // RoleManager: el servicio de Android que gestiona "roles" como
     // "app de filtrado de llamadas". Sin el rol, nuestro servicio no se activa.
     val roleManager = remember { context.getSystemService(RoleManager::class.java) }
 
-    // Base de datos y lista de filtros. Se leen de SQLite al abrir la app.
-    val db = remember { FiltrosDbHelper(context) }
-    val filtros = remember { mutableStateListOf<Filtro>().apply { addAll(db.obtenerTodos()) } }
-    fun recargar() {
-        filtros.clear()
-        filtros.addAll(db.obtenerTodos())
-    }
-
     // remember(refresco): cada vez que la app vuelve a primer plano se recalcula.
-    var filtroActivo by remember(refresco) {
+    var activo by remember(refresco) {
         mutableStateOf(roleManager.isRoleHeld(RoleManager.ROLE_CALL_SCREENING))
     }
-
-    // Diálogo de añadir/editar. Si filtroEditando es null, estamos añadiendo.
-    var dialogoVisible by remember { mutableStateOf(false) }
-    var filtroEditando by remember { mutableStateOf<Filtro?>(null) }
-    // Filtro pendiente de confirmar su borrado.
-    var filtroABorrar by remember { mutableStateOf<Filtro?>(null) }
 
     // Cuando el usuario responde al diálogo del sistema, volvemos aquí
     // y volvemos a comprobar si ahora tenemos el rol.
     val lanzador = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
-        filtroActivo = roleManager.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)
+        activo = roleManager.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)
     }
+
+    return EstadoRol(
+        activo = activo,
+        solicitar = {
+            // Android muestra su propio diálogo: la app no puede darse el rol sola.
+            lanzador.launch(roleManager.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING))
+        },
+        abrirAjustes = {
+            // Por si el usuario rechazó el diálogo y ya no vuelve a salir.
+            runCatching {
+                context.startActivity(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PantallaFiltro(
+    rol: EstadoRol,
+    db: FiltrosDbHelper,
+    filtros: List<Filtro>,
+    recargar: () -> Unit,
+    snackbarState: SnackbarHostState,
+    scope: CoroutineScope,
+    onAcerca: () -> Unit
+) {
+    // Diálogo de añadir/editar. Si filtroEditando es null, estamos añadiendo.
+    var dialogoVisible by remember { mutableStateOf(false) }
+    var filtroEditando by remember { mutableStateOf<Filtro?>(null) }
+    // Filtro pendiente de confirmar su borrado.
+    var filtroABorrar by remember { mutableStateOf<Filtro?>(null) }
 
     Scaffold(
         topBar = {
@@ -131,18 +180,9 @@ fun PantallaFiltro(refresco: Int, onAcerca: () -> Unit) {
         ) {
             item {
                 TarjetaEstado(
-                    activo = filtroActivo,
-                    onActivar = {
-                        // Android muestra su propio diálogo: la app no puede darse el rol sola.
-                        val intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_CALL_SCREENING)
-                        lanzador.launch(intent)
-                    },
-                    onAjustes = {
-                        // Por si el usuario rechazó el diálogo y ya no vuelve a salir.
-                        runCatching {
-                            context.startActivity(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
-                        }
-                    }
+                    activo = rol.activo,
+                    onActivar = rol.solicitar,
+                    onAjustes = rol.abrirAjustes
                 )
             }
 
