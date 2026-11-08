@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.Filtro400" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Modo claro. windowBackground = mismo color de fondo que el tema de Compose,
+         así no hay parpadeo de otro color al abrir la app. -->
+    <style name="Theme.Filtro400" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">#F4F8FC</item>
+    </style>
 </resources>

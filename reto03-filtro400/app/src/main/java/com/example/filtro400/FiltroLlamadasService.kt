@@ -24,15 +24,19 @@ class FiltroLlamadasService : CallScreeningService() {
         // oculto, viene vacío y no lo bloqueamos.
         val numero = callDetails.handle?.schemeSpecificPart.orEmpty()
 
-        // Fase 2: leemos los prefijos activos de SQLite EN CADA LLAMADA.
+        // Leemos los prefijos activos de SQLite EN CADA LLAMADA.
         // Así, cualquier cambio hecho en la pantalla se aplica al instante,
         // sin reiniciar nada.
         val bloquear = esEntrante &&
                 ReglaBloqueo.debeBloquearse(numero, db.prefijosActivos())
 
-        // Solo para depurar: ver la decisión en Logcat (filtra por "Filtro400").
-        // Quítalo en una versión final: un número de teléfono es dato personal.
-        Log.d("Filtro400", "Llamada de '$numero' -> ${if (bloquear) "BLOQUEADA" else "PERMITIDA"}")
+        // Para depurar: la decisión queda en Logcat (filtra por "Filtro400").
+        // Privacidad: el número se registra ENMASCARADO, nunca completo.
+        Log.d(
+            "Filtro400",
+            "Llamada de ${ReglaBloqueo.enmascarar(numero)} -> " +
+                    if (bloquear) "BLOQUEADA" else "PERMITIDA"
+        )
 
         // Siempre hay que responder, también cuando dejamos pasar la llamada.
         val respuesta = CallResponse.Builder()

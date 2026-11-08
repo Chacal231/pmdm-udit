@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Modo oscuro: mismo nombre de tema, pero con base oscura y el fondo azul marino. -->
+    <style name="Theme.Filtro400" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#0B1F3A</item>
+    </style>
+</resources>

@@ -34,4 +34,12 @@ object ReglaBloqueo {
     // Misma firma que antes: la usa el servicio de llamadas.
     fun debeBloquearse(numero: String, prefijos: List<String>): Boolean =
         prefijoCoincidente(numero, prefijos) != null
+
+    // Privacidad: un número de teléfono es un dato personal. Cuando hay que
+    // dejar constancia (Logcat, registros) usamos una versión enmascarada:
+    // "+34 400 123 456" -> "400***456". Números muy cortos -> "***".
+    fun enmascarar(numero: String): String {
+        val n = normalizar(numero)
+        return if (n.length <= 6) "***" else n.take(3) + "***" + n.takeLast(3)
+    }
 }

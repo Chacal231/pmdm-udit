@@ -1,12 +1,12 @@
 package com.example.filtro400.ui.theme
- 
+
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
- 
+
 // Paleta propia de la app: azul marino + turquesa.
 // No usamos el color dinámico de Android para que SIEMPRE se vea igual.
 private val EsquemaOscuro = darkColorScheme(
@@ -23,9 +23,14 @@ private val EsquemaOscuro = darkColorScheme(
     onSurfaceVariant = Color(0xFFB8C7DB),
     error = Color(0xFFFF6B6B),
     errorContainer = Color(0xFF5C1F28),
-    onErrorContainer = Color(0xFFFFDAD6)
+    onErrorContainer = Color(0xFFFFDAD6),
+    surfaceContainerLowest = Color(0xFF0A1A32),
+    surfaceContainerLow = Color(0xFF0E2542),
+    surfaceContainer = Color(0xFF122C50),
+    surfaceContainerHigh = Color(0xFF16345D),
+    surfaceContainerHighest = Color(0xFF173660),
 )
- 
+
 private val EsquemaClaro = lightColorScheme(
     primary = Color(0xFF0B1F3A),
     onPrimary = Color(0xFFFFFFFF),
@@ -40,14 +45,21 @@ private val EsquemaClaro = lightColorScheme(
     onSurfaceVariant = Color(0xFF3A4D66),
     error = Color(0xFFB3261E),
     errorContainer = Color(0xFFFCE4E1),
-    onErrorContainer = Color(0xFF5C0F0A)
+    onErrorContainer = Color(0xFF5C0F0A),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFFBFDFF),
+    surfaceContainer = Color(0xFFF0F5FA),
+    surfaceContainerHigh = Color(0xFFEAF1F8),
+    surfaceContainerHighest = Color(0xFFFFFFFF),
 )
- 
-// Sigue el modo claro/oscuro del sistema.
+
+// Tema único de la app. Sigue el modo claro/oscuro del sistema.
+// "Typography" viene de Type.kt (mismo paquete).
 @Composable
 fun EscudoTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = if (isSystemInDarkTheme()) EsquemaOscuro else EsquemaClaro,
+        typography = Typography,
         content = content
     )
 }

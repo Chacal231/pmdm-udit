@@ -93,4 +93,16 @@ class ReglaBloqueoTest {
         assertEquals("400123456", ReglaBloqueo.normalizar("0034-400-123-456"))
         assertEquals("400123456", ReglaBloqueo.normalizar("400123456"))
     }
+
+    @Test
+    fun enmascararOcultaLaParteCentralDelNumero() {
+        assertEquals("400***456", ReglaBloqueo.enmascarar("+34 400 123 456"))
+        assertEquals("600***789", ReglaBloqueo.enmascarar("0034600123789"))
+    }
+
+    @Test
+    fun enmascararNumerosCortosOVaciosDevuelveSoloAsteriscos() {
+        assertEquals("***", ReglaBloqueo.enmascarar("12345"))
+        assertEquals("***", ReglaBloqueo.enmascarar(""))
+    }
 }
