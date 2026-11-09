@@ -106,13 +106,28 @@ fun AppRaiz(refresco: Int, modoTema: ModoTema, onCambiarTema: (ModoTema) -> Unit
         filtros.clear()
         filtros.addAll(db.obtenerTodos())
     }
-    val bloqueadas = rememberBloqueadas(refresco)
+    val preferencias = remember { Preferencias(context.applicationContext) }
+    val bloqueadas = rememberBloqueadas(preferencias, refresco)
+    var onboardingHecho by remember { mutableStateOf(preferencias.onboardingCompletado) }
 
     // rememberSaveable: la sección actual sobrevive al girar el móvil.
     var seccion by rememberSaveable { mutableStateOf(Seccion.INICIO) }
     var verAcerca by rememberSaveable { mutableStateOf(false) }
     // El botón "+ Añadir" está en la raíz, pero el diálogo lo dibuja Reglas.
     var anadiendo by remember { mutableStateOf(false) }
+
+    // La marca se guarda solo al terminar: si el usuario abandona a medias, la
+    // introducción vuelve a salir la próxima vez.
+    if (!onboardingHecho) {
+        PantallaOnboarding(
+            rol = rol,
+            onTerminar = {
+                preferencias.onboardingCompletado = true
+                onboardingHecho = true
+            }
+        )
+        return
+    }
 
     if (verAcerca) {
         PantallaAcerca(onVolver = { verAcerca = false })
@@ -189,9 +204,7 @@ fun AppRaiz(refresco: Int, modoTema: ModoTema, onCambiarTema: (ModoTema) -> Unit
 // Lo escribe el servicio, fuera de Compose, así que hay que escuchar los cambios
 // para que la tarjeta suba en directo, con la app abierta.
 @Composable
-fun rememberBloqueadas(refresco: Int): Int {
-    val context = LocalContext.current
-    val preferencias = remember { Preferencias(context.applicationContext) }
+fun rememberBloqueadas(preferencias: Preferencias, refresco: Int): Int {
     var bloqueadas by remember { mutableIntStateOf(preferencias.bloqueadas) }
 
     // Al volver a primer plano releemos, por si algo se perdió mientras tanto.

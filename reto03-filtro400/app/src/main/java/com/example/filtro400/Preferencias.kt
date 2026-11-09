@@ -19,6 +19,11 @@ class Preferencias(context: Context) {
         get() = ModoTema.desdeNombre(prefs.getString(CLAVE_TEMA, null))
         set(valor) = prefs.edit { putString(CLAVE_TEMA, valor.name) }
 
+    // Si no existe la clave (primera vez que se abre la app), vale false.
+    var onboardingCompletado: Boolean
+        get() = prefs.getBoolean(CLAVE_ONBOARDING, false)
+        set(valor) = prefs.edit { putBoolean(CLAVE_ONBOARDING, valor) }
+
     // Solo guardamos cuántas llamadas se han bloqueado, nunca qué números eran.
     val bloqueadas: Int
         get() = prefs.getInt(CLAVE_BLOQUEADAS, 0)
@@ -44,6 +49,7 @@ class Preferencias(context: Context) {
     companion object {
         private const val NOMBRE_ARCHIVO = "escudo_prefs"
         private const val CLAVE_TEMA = "modo_tema"
+        private const val CLAVE_ONBOARDING = "onboarding_completado"
         private const val CLAVE_BLOQUEADAS = "llamadas_bloqueadas"
     }
 }
