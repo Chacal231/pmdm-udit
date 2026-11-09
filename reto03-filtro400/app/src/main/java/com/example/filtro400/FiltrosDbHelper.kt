@@ -4,11 +4,17 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import java.util.concurrent.CopyOnWriteArraySet
 
 // SQLiteOpenHelper: clase de Android que crea la base de datos la primera vez
-// y nos da acceso a ella después. Aquí vive el CRUD de los filtros.
-class FiltrosDbHelper(context: Context) :
+// y nos da acceso a ella después. Aquí vive el CRUD de los filtros y el registro.
+// El constructor es privado para obligar a pasar por obtener(): ver más abajo.
+class FiltrosDbHelper private constructor(context: Context) :
     SQLiteOpenHelper(context, NOMBRE_BD, null, VERSION_BD) {
+
+    // Funciones que quieren enterarse de que el registro ha cambiado.
+    // CopyOnWrite: permite recorrerla sin fallar aunque alguien se dé de baja a la vez.
+    private val observadoresActividad = CopyOnWriteArraySet<() -> Unit>()
 
     // Se ejecuta UNA sola vez, cuando la base de datos todavía no existe.
     override fun onCreate(db: SQLiteDatabase) {
@@ -26,10 +32,42 @@ class FiltrosDbHelper(context: Context) :
             put(COL_PREFIJO, "400")
             put(COL_ACTIVO, 1)
         })
+        crearTablasV2(db)
     }
 
-    // Se ejecutaría al subir VERSION_BD (en la Fase 3: listas blancas, registro...).
-    override fun onUpgrade(db: SQLiteDatabase, versionAnterior: Int, versionNueva: Int) {}
+    // Se ejecuta al abrir una base de datos con una versión anterior a VERSION_BD.
+    // Migración: solo AÑADE tablas, así que "filtros" conserva todos sus datos.
+    // Android la envuelve en una transacción: si falla, la BD no queda a medias.
+    override fun onUpgrade(db: SQLiteDatabase, versionAnterior: Int, versionNueva: Int) {
+        if (versionAnterior < 2) crearTablasV2(db)
+    }
+
+    // onCreate y onUpgrade comparten este método para que una instalación nueva y
+    // una actualizada acaben con exactamente las mismas tablas.
+    private fun crearTablasV2(db: SQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS $TABLA_ACTIVIDAD (
+                $COL_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                $COL_FECHA INTEGER NOT NULL,
+                $COL_NUMERO_ENMASCARADO TEXT NOT NULL,
+                $COL_DECISION TEXT NOT NULL,
+                $COL_MOTIVO TEXT NOT NULL
+            )
+            """.trimIndent()
+        )
+        // Vacía hasta el bloque B. Se crea ya para que la v2 sea una sola migración:
+        // añadirla más tarde sin subir de versión dejaría sin tabla a quien ya esté en v2.
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS $TABLA_NUMEROS (
+                $COL_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                $COL_NUMERO TEXT NOT NULL UNIQUE,
+                $COL_TIPO TEXT NOT NULL
+            )
+            """.trimIndent()
+        )
+    }
 
     // READ: todos los filtros, para mostrarlos en la pantalla.
     fun obtenerTodos(): List<Filtro> {
@@ -93,12 +131,112 @@ class FiltrosDbHelper(context: Context) :
         writableDatabase.delete(TABLA, "$COL_ID = ?", arrayOf(id.toString()))
     }
 
+    // ---- Registro de actividad ----
+
+    // Recibe el número tal cual, pero la única escritura pasa por
+    // RegistroActividad.crear: a esta tabla solo puede llegar enmascarado.
+    fun registrar(
+        numero: String,
+        bloqueada: Boolean,
+        motivo: String,
+        fecha: Long = System.currentTimeMillis()
+    ) {
+        val entrada = RegistroActividad.crear(numero, bloqueada, motivo, fecha)
+        val valores = ContentValues().apply {
+            put(COL_FECHA, entrada.fecha)
+            put(COL_NUMERO_ENMASCARADO, entrada.numeroEnmascarado)
+            put(COL_DECISION, entrada.decision.name)
+            put(COL_MOTIVO, entrada.motivo)
+        }
+        val db = writableDatabase
+        // Transacción: insertar y recortar ocurren juntos o no ocurre ninguno.
+        db.beginTransaction()
+        try {
+            db.insert(TABLA_ACTIVIDAD, null, valores)
+            // El id solo crece, así que ordena por antigüedad sin depender del reloj
+            // del móvil. Con 500 filas o menos la subconsulta da NULL y no borra nada.
+            db.delete(
+                TABLA_ACTIVIDAD,
+                "$COL_ID <= (SELECT $COL_ID FROM $TABLA_ACTIVIDAD " +
+                        "ORDER BY $COL_ID DESC LIMIT 1 OFFSET ${RegistroActividad.MAX_ENTRADAS})",
+                null
+            )
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        avisarCambioActividad()
+    }
+
+    // READ: el registro completo, de la llamada más reciente a la más antigua.
+    fun obtenerActividad(): List<EntradaActividad> {
+        val lista = mutableListOf<EntradaActividad>()
+        readableDatabase.query(
+            TABLA_ACTIVIDAD, null, null, null, null, null, "$COL_ID DESC"
+        ).use { c ->
+            while (c.moveToNext()) {
+                lista.add(
+                    EntradaActividad(
+                        id = c.getLong(c.getColumnIndexOrThrow(COL_ID)),
+                        fecha = c.getLong(c.getColumnIndexOrThrow(COL_FECHA)),
+                        numeroEnmascarado = c.getString(c.getColumnIndexOrThrow(COL_NUMERO_ENMASCARADO)),
+                        decision = DecisionLlamada.desdeNombre(
+                            c.getString(c.getColumnIndexOrThrow(COL_DECISION))
+                        ),
+                        motivo = c.getString(c.getColumnIndexOrThrow(COL_MOTIVO))
+                    )
+                )
+            }
+        }
+        return lista
+    }
+
+    // Borra solo el registro: el contador de Inicio es acumulado y va aparte.
+    fun vaciarActividad() {
+        writableDatabase.delete(TABLA_ACTIVIDAD, null, null)
+        avisarCambioActividad()
+    }
+
+    // Avisa cada vez que cambia el registro y devuelve la función para dejar de
+    // escuchar, igual que Preferencias.observarBloqueadas. Funciona porque el
+    // servicio y la interfaz comparten proceso y, gracias a obtener(), objeto.
+    fun observarActividad(alCambiar: () -> Unit): () -> Unit {
+        observadoresActividad.add(alCambiar)
+        return { observadoresActividad.remove(alCambiar) }
+    }
+
+    private fun avisarCambioActividad() {
+        observadoresActividad.forEach { it() }
+    }
+
     companion object {
         private const val NOMBRE_BD = "filtro400.db"
-        private const val VERSION_BD = 1
+        private const val VERSION_BD = 2
         private const val TABLA = "filtros"
         private const val COL_ID = "id"
         private const val COL_PREFIJO = "prefijo"
         private const val COL_ACTIVO = "activo"
+
+        private const val TABLA_ACTIVIDAD = "actividad"
+        private const val COL_FECHA = "fecha"
+        private const val COL_NUMERO_ENMASCARADO = "numero_enmascarado"
+        private const val COL_DECISION = "decision"
+        private const val COL_MOTIVO = "motivo"
+
+        private const val TABLA_NUMEROS = "numeros"
+        private const val COL_NUMERO = "numero"
+        private const val COL_TIPO = "tipo"
+
+        // @Volatile: un cambio hecho desde un hilo lo ven enseguida los demás.
+        @Volatile
+        private var instancia: FiltrosDbHelper? = null
+
+        // Instancia única para el servicio y la interfaz: dos conexiones que
+        // escriben a la vez pueden chocar, y los avisos del registro no llegarían
+        // de un objeto a otro. Se usa applicationContext para no retener una Activity.
+        fun obtener(context: Context): FiltrosDbHelper =
+            instancia ?: synchronized(this) {
+                instancia ?: FiltrosDbHelper(context.applicationContext).also { instancia = it }
+            }
     }
 }

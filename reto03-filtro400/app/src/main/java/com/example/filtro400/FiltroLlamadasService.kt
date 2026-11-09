@@ -11,7 +11,7 @@ class FiltroLlamadasService : CallScreeningService() {
 
     // "by lazy": se crea la primera vez que se usa. Hace falta porque el
     // contexto del servicio aún no existe cuando se construye la clase.
-    private val db by lazy { FiltrosDbHelper(applicationContext) }
+    private val db by lazy { FiltrosDbHelper.obtener(applicationContext) }
     private val preferencias by lazy { Preferencias(applicationContext) }
 
     // Android llama a este método automáticamente por cada llamada.
@@ -28,8 +28,17 @@ class FiltroLlamadasService : CallScreeningService() {
         // Leemos los prefijos activos de SQLite EN CADA LLAMADA.
         // Así, cualquier cambio hecho en la pantalla se aplica al instante,
         // sin reiniciar nada.
-        val bloquear = esEntrante &&
-                ReglaBloqueo.debeBloquearse(numero, db.prefijosActivos())
+        // runCatching: abrir la BD puede lanzar una migración, y una excepción aquí
+        // dejaría la llamada sin respuesta. Si la BD falla se PERMITE la llamada:
+        // perder un bloqueo es mejor que rechazar a ciegas una llamada legítima.
+        val prefijo = if (esEntrante) {
+            runCatching { ReglaBloqueo.prefijoCoincidente(numero, db.prefijosActivos()) }
+                .onFailure { Log.e("Filtro400", "No se pudieron leer las reglas", it) }
+                .getOrNull()
+        } else {
+            null
+        }
+        val bloquear = prefijo != null
 
         // Para depurar: la decisión queda en Logcat (filtra por "Filtro400").
         // Privacidad: el número se registra ENMASCARADO, nunca completo.
@@ -42,6 +51,15 @@ class FiltroLlamadasService : CallScreeningService() {
         // runCatching: si falla el contador, la llamada debe seguir bloqueándose.
         // Contar es secundario; responder a Android, no.
         if (bloquear) runCatching { preferencias.incrementarBloqueadas() }
+
+        // Va por separado del contador para que un fallo en uno no afecte al otro.
+        // Se escribe antes de responder porque después Android puede matar el proceso.
+        if (esEntrante) {
+            val motivo = prefijo?.let(RegistroActividad::motivoPrefijo)
+                ?: RegistroActividad.MOTIVO_SIN_COINCIDENCIA
+            runCatching { db.registrar(numero, bloquear, motivo) }
+                .onFailure { Log.e("Filtro400", "No se pudo guardar el registro", it) }
+        }
 
         // Siempre hay que responder, también cuando dejamos pasar la llamada.
         val respuesta = CallResponse.Builder()

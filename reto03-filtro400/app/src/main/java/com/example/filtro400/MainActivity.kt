@@ -100,7 +100,7 @@ fun AppRaiz(refresco: Int, modoTema: ModoTema, onCambiarTema: (ModoTema) -> Unit
     val rol = rememberEstadoRol(refresco)
 
     // Base de datos y lista de filtros. Se leen de SQLite al abrir la app.
-    val db = remember { FiltrosDbHelper(context) }
+    val db = remember { FiltrosDbHelper.obtener(context) }
     val filtros = remember { mutableStateListOf<Filtro>().apply { addAll(db.obtenerTodos()) } }
     val recargar: () -> Unit = {
         filtros.clear()
@@ -189,7 +189,7 @@ fun AppRaiz(refresco: Int, modoTema: ModoTema, onCambiarTema: (ModoTema) -> Unit
                 anadiendo = anadiendo,
                 onCerrarAnadir = { anadiendo = false }
             )
-            Seccion.ACTIVIDAD -> PantallaActividad(padding = padding)
+            Seccion.ACTIVIDAD -> PantallaActividad(padding = padding, db = db)
             Seccion.AJUSTES -> PantallaAjustes(
                 padding = padding,
                 modoTema = modoTema,
