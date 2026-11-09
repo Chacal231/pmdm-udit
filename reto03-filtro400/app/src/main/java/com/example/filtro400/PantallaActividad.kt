@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import java.text.SimpleDateFormat
+import java.time.ZoneId
 import java.util.Date
 import java.util.Locale
 
@@ -34,8 +35,13 @@ import java.util.Locale
 // "padding" viene del Scaffold de la raíz y evita que el contenido quede
 // debajo de las barras.
 @Composable
-fun PantallaActividad(padding: PaddingValues, db: FiltrosDbHelper) {
+fun PantallaActividad(padding: PaddingValues, db: FiltrosDbHelper, refresco: Int) {
     val entradas = rememberActividad(db)
+    // "refresco" cambia al volver a primer plano: si la app se queda abierta de
+    // un día para otro, "hoy" tiene que recalcularse aunque no llegue ninguna llamada.
+    val resumen = remember(entradas, refresco) {
+        EstadisticasActividad.calcular(entradas, System.currentTimeMillis(), ZoneId.systemDefault())
+    }
     var confirmandoVaciar by remember { mutableStateOf(false) }
     val formatoFecha = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
 
@@ -46,6 +52,8 @@ fun PantallaActividad(padding: PaddingValues, db: FiltrosDbHelper) {
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        item { TarjetaResumen(resumen) }
+
         if (entradas.isEmpty()) {
             item { TarjetaActividadVacia() }
         } else {
@@ -103,6 +111,47 @@ fun rememberActividad(db: FiltrosDbHelper): List<EntradaActividad> {
         onDispose { dejarDeObservar() }
     }
     return entradas
+}
+
+// Resumen del registro. Se muestra también vacío, con todo a cero, para que al
+// vaciar el registro se vea que las cifras dependen de él.
+@Composable
+private fun TarjetaResumen(resumen: ResumenActividad) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                "Resumen",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            FilaResumen("Bloqueadas hoy", resumen.bloqueadasHoy.toString())
+            FilaResumen("Bloqueadas en 7 días", resumen.bloqueadasSemana.toString())
+            FilaResumen(
+                "Bloqueadas en el registro",
+                "${resumen.bloqueadasRegistro} de ${resumen.totalRegistro}"
+            )
+            FilaResumen("Porcentaje bloqueado", "${resumen.porcentajeBloqueado} %")
+            FilaResumen("Motivo de bloqueo más frecuente", resumen.motivoMasFrecuente ?: "—")
+        }
+    }
+}
+
+@Composable
+private fun FilaResumen(etiqueta: String, valor: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            etiqueta,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f)
+        )
+        Text(valor, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+    }
 }
 
 @Composable

@@ -183,7 +183,7 @@ fun AppRaiz(refresco: Int, modoTema: ModoTema, onCambiarTema: (ModoTema) -> Unit
                 snackbarState = snackbarState,
                 scope = scope
             )
-            Seccion.ACTIVIDAD -> PantallaActividad(padding = padding, db = db)
+            Seccion.ACTIVIDAD -> PantallaActividad(padding = padding, db = db, refresco = refresco)
             Seccion.AJUSTES -> PantallaAjustes(
                 padding = padding,
                 modoTema = modoTema,
