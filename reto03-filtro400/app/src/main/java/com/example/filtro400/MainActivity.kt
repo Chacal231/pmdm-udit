@@ -102,9 +102,12 @@ fun AppRaiz(refresco: Int, modoTema: ModoTema, onCambiarTema: (ModoTema) -> Unit
     // Base de datos y lista de filtros. Se leen de SQLite al abrir la app.
     val db = remember { FiltrosDbHelper.obtener(context) }
     val filtros = remember { mutableStateListOf<Filtro>().apply { addAll(db.obtenerTodos()) } }
+    val numeros = remember { mutableStateListOf<NumeroRegla>().apply { addAll(db.obtenerNumeros()) } }
     val recargar: () -> Unit = {
         filtros.clear()
         filtros.addAll(db.obtenerTodos())
+        numeros.clear()
+        numeros.addAll(db.obtenerNumeros())
     }
     val preferencias = remember { Preferencias(context.applicationContext) }
     val bloqueadas = rememberBloqueadas(preferencias, refresco)
@@ -113,8 +116,6 @@ fun AppRaiz(refresco: Int, modoTema: ModoTema, onCambiarTema: (ModoTema) -> Unit
     // rememberSaveable: la sección actual sobrevive al girar el móvil.
     var seccion by rememberSaveable { mutableStateOf(Seccion.INICIO) }
     var verAcerca by rememberSaveable { mutableStateOf(false) }
-    // El botón "+ Añadir" está en la raíz, pero el diálogo lo dibuja Reglas.
-    var anadiendo by remember { mutableStateOf(false) }
 
     // La marca se guarda solo al terminar: si el usuario abandona a medias, la
     // introducción vuelve a salir la próxima vez.
@@ -163,31 +164,24 @@ fun AppRaiz(refresco: Int, modoTema: ModoTema, onCambiarTema: (ModoTema) -> Unit
                 }
             }
         },
-        snackbarHost = { SnackbarHost(snackbarState) },
-        floatingActionButton = {
-            if (seccion == Seccion.REGLAS) {
-                ExtendedFloatingActionButton(onClick = { anadiendo = true }) {
-                    Text("+ Añadir")
-                }
-            }
-        }
+        snackbarHost = { SnackbarHost(snackbarState) }
     ) { padding ->
         when (seccion) {
             Seccion.INICIO -> PantallaInicio(
                 padding = padding,
                 rol = rol,
                 filtros = filtros,
+                numeros = numeros,
                 bloqueadas = bloqueadas
             )
             Seccion.REGLAS -> PantallaReglas(
                 padding = padding,
                 db = db,
                 filtros = filtros,
+                numeros = numeros,
                 recargar = recargar,
                 snackbarState = snackbarState,
-                scope = scope,
-                anadiendo = anadiendo,
-                onCerrarAnadir = { anadiendo = false }
+                scope = scope
             )
             Seccion.ACTIVIDAD -> PantallaActividad(padding = padding, db = db)
             Seccion.AJUSTES -> PantallaAjustes(
@@ -272,6 +266,7 @@ fun PantallaInicio(
     padding: PaddingValues,
     rol: EstadoRol,
     filtros: List<Filtro>,
+    numeros: List<NumeroRegla>,
     bloqueadas: Int
 ) {
     LazyColumn(
@@ -293,44 +288,61 @@ fun PantallaInicio(
         item {
             // La lista viene de la raíz: lo que cambies en Reglas se aplica aquí.
             TarjetaProbador(
-                prefijosActivos = filtros.filter { it.activo }.map { it.prefijo }
+                prefijosActivos = filtros.filter { it.activo }.map { it.prefijo },
+                listaBlanca = numeros.deTipo(TipoNumero.LISTA_BLANCA),
+                numerosBloqueados = numeros.deTipo(TipoNumero.BLOQUEADO)
             )
         }
     }
 }
 
-// Reglas: la lista de prefijos y sus diálogos de añadir, editar y borrar.
+// Reglas: prefijos, números bloqueados y lista blanca, con sus diálogos de
+// añadir, editar y borrar.
 @Composable
 fun PantallaReglas(
     padding: PaddingValues,
     db: FiltrosDbHelper,
     filtros: List<Filtro>,
+    numeros: List<NumeroRegla>,
     recargar: () -> Unit,
     snackbarState: SnackbarHostState,
-    scope: CoroutineScope,
-    anadiendo: Boolean,
-    onCerrarAnadir: () -> Unit
+    scope: CoroutineScope
 ) {
+    var anadiendoPrefijo by remember { mutableStateOf(false) }
     // Filtro que se está editando (null si no se edita ninguno).
     var filtroEditando by remember { mutableStateOf<Filtro?>(null) }
     // Filtro pendiente de confirmar su borrado.
     var filtroABorrar by remember { mutableStateOf<Filtro?>(null) }
 
+    // Lista a la que se está añadiendo un número (null si no se añade ninguno).
+    var anadiendoNumero by remember { mutableStateOf<TipoNumero?>(null) }
+    var numeroEditando by remember { mutableStateOf<NumeroRegla?>(null) }
+    var numeroABorrar by remember { mutableStateOf<NumeroRegla?>(null) }
+
+    // Todos los borrados terminan igual: un aviso con la opción de deshacer.
+    val ofrecerDeshacer: (String, () -> Unit) -> Unit = { mensaje, alDeshacer ->
+        scope.launch {
+            snackbarState.currentSnackbarData?.dismiss()
+            val resultado = snackbarState.showSnackbar(
+                message = mensaje,
+                actionLabel = "Deshacer",
+                duration = SnackbarDuration.Short
+            )
+            if (resultado == SnackbarResult.ActionPerformed) {
+                alDeshacer()
+                recargar()
+            }
+        }
+    }
+
     LazyColumn(
         modifier = Modifier
             .padding(padding)
             .fillMaxSize(),
-        // Margen inferior amplio para que el botón "+ Añadir" no tape la última tarjeta.
-        contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 96.dp),
+        contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item {
-            Text(
-                "Prefijos bloqueados",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-        }
+        item { CabeceraSeccion("Prefijos") { anadiendoPrefijo = true } }
 
         if (filtros.isEmpty()) {
             item {
@@ -353,7 +365,9 @@ fun PantallaReglas(
             }
         }
 
-        items(filtros, key = { it.id }) { filtro ->
+        // Las claves llevan una letra delante: filtros y números tienen ids
+        // independientes, y LazyColumn falla si dos elementos comparten clave.
+        items(filtros, key = { "f${it.id}" }) { filtro ->
             TarjetaFiltro(
                 filtro = filtro,
                 onCambiarActivo = {
@@ -363,6 +377,21 @@ fun PantallaReglas(
                 onEditar = { filtroEditando = filtro },
                 onBorrar = { filtroABorrar = filtro }
             )
+        }
+
+        TipoNumero.entries.forEach { tipo ->
+            val lista = numeros.filter { it.tipo == tipo }
+            item { CabeceraSeccion(tipo.etiqueta) { anadiendoNumero = tipo } }
+            if (lista.isEmpty()) {
+                item { Text(tipo.textoVacio, style = MaterialTheme.typography.bodySmall) }
+            }
+            items(lista, key = { "n${it.id}" }) { regla ->
+                TarjetaNumero(
+                    numero = regla.numero,
+                    onEditar = { numeroEditando = regla },
+                    onBorrar = { numeroABorrar = regla }
+                )
+            }
         }
     }
 
@@ -377,19 +406,10 @@ fun PantallaReglas(
                     db.eliminar(filtro.id)
                     recargar()
                     filtroABorrar = null
-                    scope.launch {
-                        snackbarState.currentSnackbarData?.dismiss()
-                        val resultado = snackbarState.showSnackbar(
-                            message = "Prefijo ${filtro.prefijo} eliminado",
-                            actionLabel = "Deshacer",
-                            duration = SnackbarDuration.Short
-                        )
-                        if (resultado == SnackbarResult.ActionPerformed) {
-                            // Lo devolvemos con el mismo prefijo y el mismo estado
-                            // (activo/desactivado). Vuelve al final de la lista.
-                            db.insertarConEstado(filtro.prefijo, filtro.activo)
-                            recargar()
-                        }
+                    ofrecerDeshacer("Prefijo ${filtro.prefijo} eliminado") {
+                        // Lo devolvemos con el mismo prefijo y el mismo estado
+                        // (activo/desactivado). Vuelve al final de la lista.
+                        db.insertarConEstado(filtro.prefijo, filtro.activo)
                     }
                 }) { Text("Eliminar") }
             },
@@ -399,32 +419,135 @@ fun PantallaReglas(
         )
     }
 
-    // ---- Diálogo de añadir / editar ----
-    val editando = filtroEditando
-    if (anadiendo || editando != null) {
+    numeroABorrar?.let { regla ->
+        AlertDialog(
+            onDismissRequest = { numeroABorrar = null },
+            title = { Text("¿Eliminar ${regla.numero}?") },
+            text = {
+                Text(
+                    if (regla.tipo == TipoNumero.BLOQUEADO)
+                        "Este número dejará de estar bloqueado por sí mismo."
+                    else
+                        "Este número volverá a pasar por el resto de reglas."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    db.eliminarNumero(regla.id)
+                    recargar()
+                    numeroABorrar = null
+                    ofrecerDeshacer("${regla.numero} eliminado") {
+                        db.insertarNumero(regla.numero, regla.tipo)
+                    }
+                }) { Text("Eliminar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { numeroABorrar = null }) { Text("Cancelar") }
+            }
+        )
+    }
+
+    // ---- Diálogo de añadir / editar prefijo ----
+    val editandoFiltro = filtroEditando
+    if (anadiendoPrefijo || editandoFiltro != null) {
         val cerrar: () -> Unit = {
             filtroEditando = null
-            onCerrarAnadir()
+            anadiendoPrefijo = false
         }
-        DialogoPrefijo(
-            titulo = if (editando == null) "Nuevo prefijo" else "Editar prefijo",
-            valorInicial = editando?.prefijo.orEmpty(),
+        DialogoRegla(
+            titulo = if (editandoFiltro == null) "Nuevo prefijo" else "Editar prefijo",
+            valorInicial = editandoFiltro?.prefijo.orEmpty(),
+            etiqueta = "Prefijo (ej. 400)",
             onCancelar = cerrar,
-            // Devuelve true si se guardó bien, false si hay error (vacío o repetido).
             onGuardar = { texto ->
                 val prefijo = ReglaBloqueo.limpiarPrefijo(texto)
                 val ok = when {
                     prefijo.isEmpty() -> false
-                    editando == null -> db.insertar(prefijo)
-                    else -> db.actualizarPrefijo(editando.id, prefijo)
+                    editandoFiltro == null -> db.insertar(prefijo)
+                    else -> db.actualizarPrefijo(editandoFiltro.id, prefijo)
                 }
                 if (ok) {
                     recargar()
                     cerrar()
                 }
-                ok
+                if (ok) null else "Está vacío o ya existe"
             }
         )
+    }
+
+    // ---- Diálogo de añadir / editar número ----
+    val editandoNumero = numeroEditando
+    val tipoDialogo = editandoNumero?.tipo ?: anadiendoNumero
+    if (tipoDialogo != null) {
+        val cerrar: () -> Unit = {
+            numeroEditando = null
+            anadiendoNumero = null
+        }
+        DialogoRegla(
+            titulo = if (editandoNumero == null) "Añadir a ${tipoDialogo.etiqueta.lowercase()}"
+            else "Editar número",
+            valorInicial = editandoNumero?.numero.orEmpty(),
+            etiqueta = "Número (ej. 600123456)",
+            onCancelar = cerrar,
+            onGuardar = { texto ->
+                val numero = ReglaBloqueo.limpiarNumero(texto)
+                // Se busca antes de guardar para poder decir en qué lista está.
+                val repetido = numeros.firstOrNull {
+                    it.numero == numero && it.id != editandoNumero?.id
+                }
+                val guardado = when {
+                    !ReglaBloqueo.esNumeroValido(texto) || repetido != null -> false
+                    editandoNumero == null -> db.insertarNumero(numero, tipoDialogo)
+                    else -> db.actualizarNumero(editandoNumero.id, numero)
+                }
+                if (guardado) {
+                    recargar()
+                    cerrar()
+                }
+                when {
+                    guardado -> null
+                    repetido != null -> "Ya está en ${repetido.tipo.etiqueta.lowercase()}"
+                    else -> "Escribe un número de al menos 3 cifras"
+                }
+            }
+        )
+    }
+}
+
+// Título de cada sección de Reglas con su propio botón de añadir.
+@Composable
+fun CabeceraSeccion(titulo: String, onAnadir: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            titulo,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.weight(1f)
+        )
+        TextButton(onClick = onAnadir) { Text("+ Añadir") }
+    }
+}
+
+// Una tarjeta por número concreto, de cualquiera de las dos listas.
+@Composable
+fun TarjetaNumero(numero: String, onEditar: () -> Unit, onBorrar: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                numero,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+            TextButton(onClick = onEditar) { Text("Editar") }
+            TextButton(onClick = onBorrar) { Text("Borrar") }
+        }
     }
 }
 
@@ -480,7 +603,11 @@ fun TarjetaEstado(
 
 // Probador: comprueba las reglas ACTIVAS sin recibir una llamada.
 @Composable
-fun TarjetaProbador(prefijosActivos: List<String>) {
+fun TarjetaProbador(
+    prefijosActivos: List<String>,
+    listaBlanca: List<String>,
+    numerosBloqueados: List<String>
+) {
     var numero by remember { mutableStateOf("") }
     var resultado by remember { mutableStateOf("") }
 
@@ -506,13 +633,14 @@ fun TarjetaProbador(prefijosActivos: List<String>) {
             )
             Spacer(modifier = Modifier.height(8.dp))
             Button(onClick = {
-                val coincidencia = ReglaBloqueo.prefijoCoincidente(numero, prefijosActivos)
+                // El mismo motor que el servicio, para que nunca se contradigan.
+                // Solo informa: una prueba no escribe en el registro de actividad.
+                val decision = ReglaBloqueo.decidir(
+                    numero, listaBlanca, numerosBloqueados, prefijosActivos
+                )
                 val normalizado = ReglaBloqueo.normalizar(numero).ifEmpty { "(vacío)" }
-                val veredicto = if (coincidencia != null)
-                    "🚫 Se BLOQUEARÍA por el prefijo $coincidencia"
-                else
-                    "✅ Pasaría"
-                resultado = "$veredicto\nNúmero normalizado: $normalizado"
+                val veredicto = if (decision.bloquear) "🚫 Se BLOQUEARÍA" else "✅ Pasaría"
+                resultado = "$veredicto · ${decision.motivo}\nNúmero normalizado: $normalizado"
             }) { Text("Probar") }
             if (resultado.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
@@ -559,15 +687,18 @@ fun TarjetaFiltro(
     }
 }
 
+// Diálogo común para prefijos y números. onGuardar devuelve null si se guardó
+// bien, o el mensaje que hay que enseñar si no: cada regla tiene sus propios errores.
 @Composable
-fun DialogoPrefijo(
+fun DialogoRegla(
     titulo: String,
     valorInicial: String,
+    etiqueta: String,
     onCancelar: () -> Unit,
-    onGuardar: (String) -> Boolean
+    onGuardar: (String) -> String?
 ) {
     var texto by remember { mutableStateOf(valorInicial) }
-    var hayError by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = onCancelar,
@@ -575,16 +706,16 @@ fun DialogoPrefijo(
         text = {
             OutlinedTextField(
                 value = texto,
-                onValueChange = { texto = it; hayError = false },
-                label = { Text("Prefijo (ej. 400)") },
+                onValueChange = { texto = it; error = null },
+                label = { Text(etiqueta) },
                 singleLine = true,
-                isError = hayError,
-                supportingText = { if (hayError) Text("Está vacío o ya existe") },
+                isError = error != null,
+                supportingText = { error?.let { Text(it) } },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
             )
         },
         confirmButton = {
-            TextButton(onClick = { hayError = !onGuardar(texto) }) { Text("Guardar") }
+            TextButton(onClick = { error = onGuardar(texto) }) { Text("Guardar") }
         },
         dismissButton = {
             TextButton(onClick = onCancelar) { Text("Cancelar") }

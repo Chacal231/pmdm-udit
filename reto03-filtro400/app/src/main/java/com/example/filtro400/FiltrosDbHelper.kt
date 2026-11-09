@@ -56,8 +56,7 @@ class FiltrosDbHelper private constructor(context: Context) :
             )
             """.trimIndent()
         )
-        // Vacía hasta el bloque B. Se crea ya para que la v2 sea una sola migración:
-        // añadirla más tarde sin subir de versión dejaría sin tabla a quien ya esté en v2.
+        // Números concretos: bloqueados y lista blanca, distinguidos por "tipo".
         db.execSQL(
             """
             CREATE TABLE IF NOT EXISTS $TABLA_NUMEROS (
@@ -107,8 +106,16 @@ class FiltrosDbHelper private constructor(context: Context) :
             put(COL_PREFIJO, prefijo)
             put(COL_ACTIVO, if (activo) 1 else 0)
         }
-        return writableDatabase.insert(TABLA, null, valores) != -1L
+        return insertarSinRegistrarDuplicados(TABLA, valores)
     }
+
+    // Privacidad: insert() normal, si choca con un UNIQUE, escribe en Logcat todos
+    // los valores de la fila, y un "prefijo" puede ser un número entero. Con
+    // CONFLICT_IGNORE el duplicado solo devuelve -1, sin dejar rastro.
+    private fun insertarSinRegistrarDuplicados(tabla: String, valores: ContentValues): Boolean =
+        writableDatabase.insertWithOnConflict(
+            tabla, null, valores, SQLiteDatabase.CONFLICT_IGNORE
+        ) != -1L
 
     // UPDATE del prefijo. Devuelve false si choca con otro ya existente.
     fun actualizarPrefijo(id: Long, prefijo: String): Boolean {
@@ -129,6 +136,53 @@ class FiltrosDbHelper private constructor(context: Context) :
     // DELETE
     fun eliminar(id: Long) {
         writableDatabase.delete(TABLA, "$COL_ID = ?", arrayOf(id.toString()))
+    }
+
+    // ---- Números concretos (bloqueados y lista blanca) ----
+
+    // READ: las dos listas juntas. Se reparten con deTipo().
+    fun obtenerNumeros(): List<NumeroRegla> {
+        val lista = mutableListOf<NumeroRegla>()
+        readableDatabase.query(
+            TABLA_NUMEROS, null, null, null, null, null, "$COL_ID ASC"
+        ).use { c ->
+            while (c.moveToNext()) {
+                lista.add(
+                    NumeroRegla(
+                        id = c.getLong(c.getColumnIndexOrThrow(COL_ID)),
+                        numero = c.getString(c.getColumnIndexOrThrow(COL_NUMERO)),
+                        tipo = TipoNumero.desdeNombre(
+                            c.getString(c.getColumnIndexOrThrow(COL_TIPO))
+                        )
+                    )
+                )
+            }
+        }
+        return lista
+    }
+
+    // CREATE: devuelve false si el número ya existe. La columna es UNIQUE en toda
+    // la tabla, así que un número no puede estar a la vez en las dos listas.
+    fun insertarNumero(numero: String, tipo: TipoNumero): Boolean {
+        val valores = ContentValues().apply {
+            put(COL_NUMERO, numero)
+            put(COL_TIPO, tipo.name)
+        }
+        return insertarSinRegistrarDuplicados(TABLA_NUMEROS, valores)
+    }
+
+    // UPDATE: devuelve false si choca con otro número ya guardado.
+    fun actualizarNumero(id: Long, numero: String): Boolean {
+        val valores = ContentValues().apply { put(COL_NUMERO, numero) }
+        return writableDatabase.updateWithOnConflict(
+            TABLA_NUMEROS, valores, "$COL_ID = ?", arrayOf(id.toString()),
+            SQLiteDatabase.CONFLICT_IGNORE
+        ) > 0
+    }
+
+    // DELETE
+    fun eliminarNumero(id: Long) {
+        writableDatabase.delete(TABLA_NUMEROS, "$COL_ID = ?", arrayOf(id.toString()))
     }
 
     // ---- Registro de actividad ----

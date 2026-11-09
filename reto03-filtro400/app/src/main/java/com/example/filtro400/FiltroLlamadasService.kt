@@ -25,20 +25,28 @@ class FiltroLlamadasService : CallScreeningService() {
         // oculto, viene vacío y no lo bloqueamos.
         val numero = callDetails.handle?.schemeSpecificPart.orEmpty()
 
-        // Leemos los prefijos activos de SQLite EN CADA LLAMADA.
+        // Leemos las reglas de SQLite EN CADA LLAMADA.
         // Así, cualquier cambio hecho en la pantalla se aplica al instante,
         // sin reiniciar nada.
         // runCatching: abrir la BD puede lanzar una migración, y una excepción aquí
         // dejaría la llamada sin respuesta. Si la BD falla se PERMITE la llamada:
         // perder un bloqueo es mejor que rechazar a ciegas una llamada legítima.
-        val prefijo = if (esEntrante) {
-            runCatching { ReglaBloqueo.prefijoCoincidente(numero, db.prefijosActivos()) }
+        val resultado = if (esEntrante) {
+            runCatching {
+                val numeros = db.obtenerNumeros()
+                ReglaBloqueo.decidir(
+                    numero = numero,
+                    listaBlanca = numeros.deTipo(TipoNumero.LISTA_BLANCA),
+                    numerosBloqueados = numeros.deTipo(TipoNumero.BLOQUEADO),
+                    prefijos = db.prefijosActivos()
+                )
+            }
                 .onFailure { Log.e("Filtro400", "No se pudieron leer las reglas", it) }
                 .getOrNull()
         } else {
             null
         }
-        val bloquear = prefijo != null
+        val bloquear = resultado?.bloquear == true
 
         // Para depurar: la decisión queda en Logcat (filtra por "Filtro400").
         // Privacidad: el número se registra ENMASCARADO, nunca completo.
@@ -55,8 +63,7 @@ class FiltroLlamadasService : CallScreeningService() {
         // Va por separado del contador para que un fallo en uno no afecte al otro.
         // Se escribe antes de responder porque después Android puede matar el proceso.
         if (esEntrante) {
-            val motivo = prefijo?.let(RegistroActividad::motivoPrefijo)
-                ?: RegistroActividad.MOTIVO_SIN_COINCIDENCIA
+            val motivo = resultado?.motivo ?: RegistroActividad.MOTIVO_SIN_COINCIDENCIA
             runCatching { db.registrar(numero, bloquear, motivo) }
                 .onFailure { Log.e("Filtro400", "No se pudo guardar el registro", it) }
         }

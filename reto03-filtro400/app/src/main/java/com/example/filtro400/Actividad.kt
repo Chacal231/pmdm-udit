@@ -34,6 +34,8 @@ object RegistroActividad {
     const val MAX_ENTRADAS = 500
 
     const val MOTIVO_SIN_COINCIDENCIA = "Sin coincidencia"
+    const val MOTIVO_LISTA_BLANCA = "Lista blanca"
+    const val MOTIVO_NUMERO_CONCRETO = "Número concreto"
 
     private const val MAX_CIFRAS_PREFIJO_VISIBLE = 6
 
