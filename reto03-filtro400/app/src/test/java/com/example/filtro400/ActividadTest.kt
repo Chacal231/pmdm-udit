@@ -58,12 +58,25 @@ class ActividadTest {
     @Test
     fun motivoConPrefijoCortoSeMuestraEntero() {
         assertEquals("Prefijo 400", RegistroActividad.motivoPrefijo("400"))
-        assertEquals("Prefijo 123456", RegistroActividad.motivoPrefijo("123456"))
+        assertEquals("Prefijo 91", RegistroActividad.motivoPrefijo("91"))
     }
 
     @Test
     fun motivoConPrefijoLargoSeEnmascara() {
-        assertEquals("Prefijo 600***456", RegistroActividad.motivoPrefijo("600123456"))
+        assertEquals("Prefijo 600***", RegistroActividad.motivoPrefijo("6001"))
+        assertEquals("Prefijo 123***", RegistroActividad.motivoPrefijo("123456"))
+        assertEquals("Prefijo 600***", RegistroActividad.motivoPrefijo("600123456"))
+    }
+
+    // Las cifras centrales (123) son justo las que oculta la máscara: no pueden
+    // aparecer en ningún campo, o la fila permitiría reconstruir el número.
+    @Test
+    fun prefijoDeSeisCifrasYMascaraJuntosNoRevelanElNumero() {
+        val entrada = crear("600123456", motivo = RegistroActividad.motivoPrefijo("600123"))
+        assertEquals("600***456", entrada.numeroEnmascarado)
+        assertEquals("Prefijo 600***", entrada.motivo)
+        val juntos = "${entrada.numeroEnmascarado} ${entrada.motivo}"
+        assertFalse(juntos, juntos.contains("123"))
     }
 
     @Test

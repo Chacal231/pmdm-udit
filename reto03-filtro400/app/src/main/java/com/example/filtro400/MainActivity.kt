@@ -580,7 +580,7 @@ fun TarjetaEstado(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                if (activo) "Las llamadas con un prefijo activo se rechazan antes de sonar."
+                if (activo) "Se rechazan antes de sonar las llamadas con un prefijo activo o de un número concreto bloqueado, salvo las de tu lista blanca."
                 else "Android necesita que esta app sea tu filtro de llamadas para poder bloquear.",
                 style = MaterialTheme.typography.bodyMedium
             )
@@ -764,9 +764,11 @@ fun PantallaAcerca(onVolver: () -> Unit) {
                     Text("Versión $version", style = MaterialTheme.typography.bodySmall)
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        "Bloquea llamadas entrantes según prefijos que tú configuras, " +
-                                "sin sustituir tu aplicación de teléfono. Los filtros se " +
-                                "guardan solo en tu móvil, en una base de datos SQLite."
+                        "Bloquea llamadas entrantes según los prefijos y números concretos " +
+                                "que tú configuras, con una lista blanca para las excepciones, " +
+                                "sin sustituir tu aplicación de teléfono. Las reglas se guardan " +
+                                "en una base de datos SQLite de la app y pueden incluirse en " +
+                                "las copias de seguridad de Android."
                     )
                 }
             }

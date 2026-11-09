@@ -7,7 +7,8 @@ import android.database.sqlite.SQLiteOpenHelper
 import java.util.concurrent.CopyOnWriteArraySet
 
 // SQLiteOpenHelper: clase de Android que crea la base de datos la primera vez
-// y nos da acceso a ella después. Aquí vive el CRUD de los filtros y el registro.
+// y nos da acceso a ella después. Aquí vive el CRUD de los filtros y de los
+// números concretos, además del registro de actividad.
 // El constructor es privado para obligar a pasar por obtener(): ver más abajo.
 class FiltrosDbHelper private constructor(context: Context) :
     SQLiteOpenHelper(context, NOMBRE_BD, null, VERSION_BD) {
@@ -27,7 +28,7 @@ class FiltrosDbHelper private constructor(context: Context) :
             )
             """.trimIndent()
         )
-        // Para no perder lo de la Fase 1: el prefijo 400 viene creado de serie.
+        // El prefijo 400 viene creado de serie: es la regla base de la app.
         db.insert(TABLA, null, ContentValues().apply {
             put(COL_PREFIJO, "400")
             put(COL_ACTIVO, 1)
@@ -85,7 +86,8 @@ class FiltrosDbHelper private constructor(context: Context) :
         return lista
     }
 
-    // Solo los prefijos activos: es lo que consulta el servicio en cada llamada.
+    // Solo los prefijos activos: el servicio los consulta en cada llamada, junto
+    // con los números concretos de obtenerNumeros().
     fun prefijosActivos(): List<String> {
         val lista = mutableListOf<String>()
         readableDatabase.query(

@@ -126,7 +126,7 @@ class DecisionLlamadaTest {
     @Test
     fun ningunMotivoRevelaUnPrefijoLargo() {
         assertEquals(
-            ResultadoDecision(true, "Prefijo 600***456"),
+            ResultadoDecision(true, "Prefijo 600***"),
             decidir("600123456", prefijos = listOf("600123456"))
         )
     }

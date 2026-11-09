@@ -37,13 +37,14 @@ object RegistroActividad {
     const val MOTIVO_LISTA_BLANCA = "Lista blanca"
     const val MOTIVO_NUMERO_CONCRETO = "Número concreto"
 
-    private const val MAX_CIFRAS_PREFIJO_VISIBLE = 6
+    private const val MAX_CIFRAS_PREFIJO_VISIBLE = 3
 
-    // Un "prefijo" puede ser en realidad un número entero (nada impide escribir
-    // 600123456 en Reglas), así que si es largo también se enmascara.
+    // El número enmascarado ya enseña sus 3 primeras cifras y las 3 últimas. Si el
+    // motivo mostrara más cifras del prefijo, rellenaría justo el hueco oculto:
+    // "600***456" junto a "Prefijo 600123" revelaría el número entero.
     fun motivoPrefijo(prefijo: String): String {
         val visible = if (prefijo.length > MAX_CIFRAS_PREFIJO_VISIBLE) {
-            ReglaBloqueo.enmascarar(prefijo)
+            prefijo.take(MAX_CIFRAS_PREFIJO_VISIBLE) + "***"
         } else {
             prefijo
         }

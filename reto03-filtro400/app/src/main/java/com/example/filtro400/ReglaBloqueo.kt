@@ -36,7 +36,8 @@ object ReglaBloqueo {
         return prefijos.firstOrNull { it.isNotEmpty() && n.startsWith(it) }
     }
 
-    // Misma firma que antes: la usa el servicio de llamadas.
+    // Comprueba solo los prefijos. El servicio ya usa decidir(); esta función se
+    // conserva porque la siguen utilizando los tests de ReglaBloqueoTest.
     fun debeBloquearse(numero: String, prefijos: List<String>): Boolean =
         prefijoCoincidente(numero, prefijos) != null
 
