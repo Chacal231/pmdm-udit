@@ -106,6 +106,7 @@ fun AppRaiz(refresco: Int, modoTema: ModoTema, onCambiarTema: (ModoTema) -> Unit
         filtros.clear()
         filtros.addAll(db.obtenerTodos())
     }
+    val bloqueadas = rememberBloqueadas(refresco)
 
     // rememberSaveable: la sección actual sobrevive al girar el móvil.
     var seccion by rememberSaveable { mutableStateOf(Seccion.INICIO) }
@@ -157,7 +158,12 @@ fun AppRaiz(refresco: Int, modoTema: ModoTema, onCambiarTema: (ModoTema) -> Unit
         }
     ) { padding ->
         when (seccion) {
-            Seccion.INICIO -> PantallaInicio(padding = padding, rol = rol, filtros = filtros)
+            Seccion.INICIO -> PantallaInicio(
+                padding = padding,
+                rol = rol,
+                filtros = filtros,
+                bloqueadas = bloqueadas
+            )
             Seccion.REGLAS -> PantallaReglas(
                 padding = padding,
                 db = db,
@@ -177,6 +183,27 @@ fun AppRaiz(refresco: Int, modoTema: ModoTema, onCambiarTema: (ModoTema) -> Unit
             )
         }
     }
+}
+
+// Devuelve el contador de llamadas bloqueadas y lo mantiene al día.
+// Lo escribe el servicio, fuera de Compose, así que hay que escuchar los cambios
+// para que la tarjeta suba en directo, con la app abierta.
+@Composable
+fun rememberBloqueadas(refresco: Int): Int {
+    val context = LocalContext.current
+    val preferencias = remember { Preferencias(context.applicationContext) }
+    var bloqueadas by remember { mutableIntStateOf(preferencias.bloqueadas) }
+
+    // Al volver a primer plano releemos, por si algo se perdió mientras tanto.
+    LaunchedEffect(refresco) { bloqueadas = preferencias.bloqueadas }
+
+    // DisposableEffect: empieza a escuchar al entrar y deja de hacerlo al salir,
+    // para no dejar un listener activo cuando la pantalla ya no existe.
+    DisposableEffect(preferencias) {
+        val dejarDeObservar = preferencias.observarBloqueadas { bloqueadas = it }
+        onDispose { dejarDeObservar() }
+    }
+    return bloqueadas
 }
 
 // Agrupa lo que las pantallas necesitan saber y hacer con el rol de filtrado.
@@ -228,7 +255,12 @@ fun rememberEstadoRol(refresco: Int): EstadoRol {
 // Toda la pantalla es una lista: así hace scroll en móviles pequeños
 // y cuando el teclado está abierto.
 @Composable
-fun PantallaInicio(padding: PaddingValues, rol: EstadoRol, filtros: List<Filtro>) {
+fun PantallaInicio(
+    padding: PaddingValues,
+    rol: EstadoRol,
+    filtros: List<Filtro>,
+    bloqueadas: Int
+) {
     LazyColumn(
         modifier = Modifier
             .padding(padding)
@@ -240,7 +272,8 @@ fun PantallaInicio(padding: PaddingValues, rol: EstadoRol, filtros: List<Filtro>
             TarjetaEstado(
                 activo = rol.activo,
                 onActivar = rol.solicitar,
-                onAjustes = rol.abrirAjustes
+                onAjustes = rol.abrirAjustes,
+                bloqueadas = bloqueadas
             )
         }
 
@@ -383,8 +416,14 @@ fun PantallaReglas(
 }
 
 // Tarjeta de arriba: verde-turquesa si el filtro está activo, roja si no.
+// "bloqueadas" es opcional: si es null, la tarjeta no muestra el contador.
 @Composable
-fun TarjetaEstado(activo: Boolean, onActivar: () -> Unit, onAjustes: () -> Unit) {
+fun TarjetaEstado(
+    activo: Boolean,
+    onActivar: () -> Unit,
+    onAjustes: () -> Unit,
+    bloqueadas: Int? = null
+) {
     val colores = if (activo) {
         CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -409,6 +448,14 @@ fun TarjetaEstado(activo: Boolean, onActivar: () -> Unit, onAjustes: () -> Unit)
                 else "Android necesita que esta app sea tu filtro de llamadas para poder bloquear.",
                 style = MaterialTheme.typography.bodyMedium
             )
+            if (bloqueadas != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    "🛡️ ${ContadorBloqueos.textoBloqueadas(bloqueadas)}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
             if (!activo) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Button(onClick = onActivar) { Text("Activar filtro de llamadas") }

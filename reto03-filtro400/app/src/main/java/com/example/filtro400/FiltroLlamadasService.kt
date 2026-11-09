@@ -12,6 +12,7 @@ class FiltroLlamadasService : CallScreeningService() {
     // "by lazy": se crea la primera vez que se usa. Hace falta porque el
     // contexto del servicio aún no existe cuando se construye la clase.
     private val db by lazy { FiltrosDbHelper(applicationContext) }
+    private val preferencias by lazy { Preferencias(applicationContext) }
 
     // Android llama a este método automáticamente por cada llamada.
     override fun onScreenCall(callDetails: Call.Details) {
@@ -37,6 +38,10 @@ class FiltroLlamadasService : CallScreeningService() {
             "Llamada de ${ReglaBloqueo.enmascarar(numero)} -> " +
                     if (bloquear) "BLOQUEADA" else "PERMITIDA"
         )
+
+        // runCatching: si falla el contador, la llamada debe seguir bloqueándose.
+        // Contar es secundario; responder a Android, no.
+        if (bloquear) runCatching { preferencias.incrementarBloqueadas() }
 
         // Siempre hay que responder, también cuando dejamos pasar la llamada.
         val respuesta = CallResponse.Builder()
