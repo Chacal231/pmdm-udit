@@ -26,11 +26,18 @@ const String _fondo = 'https://image.tmdb.org/t/p/w1280';
 const String _videoBunny =
     'https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4';
 const String _videoSintel =
-    'https://archive.org/download/Sintel/sintel-2048-surround_512kb.mp4';
+    'https://archive.org/download/Sintel/sintel-2048-stereo_512kb.mp4';
 const String _videoTears =
     'https://archive.org/download/Tears-of-Steel/tears_of_steel_720p.mp4';
 const String _videoElephants =
     'https://archive.org/download/ElephantsDream/ed_hd_512kb.mp4';
+
+// Vídeo de respaldo: muy ligero (2,4 MB) y alojado en GitHub Pages.
+// El reproductor lo usa si el vídeo principal falla o tarda demasiado.
+const String videoRespaldoUrl =
+    'https://flutter.github.io/assets-for-api-docs/assets/videos/butterfly.mp4';
+const String creditosVideoRespaldo =
+    'Vídeo de respaldo: «Butterfly» · © The Flutter Authors · licencia BSD';
 
 // Textos de atribución que exige la licencia CC BY.
 const String _creditosBunny =
@@ -562,3 +569,99 @@ const List<Contenido> contenidos = [
     esCortoLibre: true,
   ),
 ];
+
+// ------------------------- CONSULTAS DEL CATÁLOGO -------------------------
+// Pequeñas funciones que "preguntan" a la lista. Cuando haya una API REST,
+// estas mismas consultas se harán al servidor y las pantallas no cambiarán.
+
+// Títulos comerciales (sin los cortos libres), opcionalmente de una categoría.
+Iterable<Contenido> _catalogo([String? categoria]) => contenidos.where(
+  (c) => !c.esCortoLibre && (categoria == null || c.categoria == categoria),
+);
+
+// Busca un contenido por su id (null si no existe).
+Contenido? contenidoPorId(int id) {
+  for (final c in contenidos) {
+    if (c.id == id) return c;
+  }
+  return null;
+}
+
+// Títulos del carrusel principal. Si la categoría no tiene destacados,
+// usamos los tres mejor valorados para que el carrusel nunca quede vacío.
+List<Contenido> destacados([String? categoria]) {
+  final lista = _catalogo(categoria).where((c) => c.destacado).toList();
+  if (lista.isNotEmpty) return lista;
+  return (_catalogo(categoria).toList()
+        ..sort((a, b) => b.coincidencia.compareTo(a.coincidencia)))
+      .take(3)
+      .toList();
+}
+
+// Top 10, en el orden en el que aparecen en la lista.
+List<Contenido> top10([String? categoria]) =>
+    _catalogo(categoria).where((c) => c.esTop10).take(10).toList();
+
+// Tendencias: lo más reciente primero y, a igualdad, lo más afín al usuario.
+List<Contenido> tendencias([String? categoria]) =>
+    _catalogo(categoria).toList()..sort((a, b) {
+      final porAnio = b.anio.compareTo(a.anio);
+      return porAnio != 0 ? porAnio : b.coincidencia.compareTo(a.coincidencia);
+    });
+
+// Todas las series o todas las películas.
+List<Contenido> porCategoria(String categoria) => _catalogo(categoria).toList();
+
+// Títulos de un género (incluye los cortos libres).
+List<Contenido> porGenero(String genero, [String? categoria]) => contenidos
+    .where(
+      (c) =>
+          c.generos.contains(genero) &&
+          (categoria == null || c.categoria == categoria),
+    )
+    .toList();
+
+// Los cortos de animación de la Blender Foundation.
+List<Contenido> cortosLibres() =>
+    contenidos.where((c) => c.esCortoLibre).toList();
+
+// "Más títulos como este": los que comparten más géneros con el contenido.
+List<Contenido> similares(Contenido contenido, {int maximo = 9}) {
+  int comunes(Contenido c) =>
+      c.generos.where(contenido.generos.contains).length;
+  final lista =
+      contenidos.where((c) => c.id != contenido.id && comunes(c) > 0).toList()
+        ..sort((a, b) {
+          final porGeneros = comunes(b).compareTo(comunes(a));
+          return porGeneros != 0
+              ? porGeneros
+              : b.coincidencia.compareTo(a.coincidencia);
+        });
+  return lista.take(maximo).toList();
+}
+
+// Pasa a minúsculas y quita las tildes para que buscar "accion"
+// encuentre "Acción" y "miercoles" encuentre "Miércoles".
+String normalizar(String texto) {
+  const conTilde = 'áàäâéèëêíìïîóòöôúùüû';
+  const sinTilde = 'aaaaeeeeiiiioooouuuu';
+  final buffer = StringBuffer();
+  for (final letra in texto.toLowerCase().trim().split('')) {
+    final i = conTilde.indexOf(letra);
+    buffer.write(i == -1 ? letra : sinTilde[i]);
+  }
+  return buffer.toString();
+}
+
+// Búsqueda por título o por género.
+List<Contenido> buscarContenidos(String texto) {
+  final consulta = normalizar(texto);
+  if (consulta.isEmpty) return const [];
+  return contenidos
+      .where(
+        (c) =>
+            normalizar(c.titulo).contains(consulta) ||
+            c.generos.any((g) => normalizar(g).contains(consulta)),
+      )
+      .toList();
+}

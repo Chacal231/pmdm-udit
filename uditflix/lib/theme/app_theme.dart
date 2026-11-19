@@ -52,6 +52,8 @@ abstract final class AppColores {
 
   // Velo oscuro para degradados sobre imágenes.
   static Color velo(double opacidad) => fondo.withValues(alpha: opacidad);
+  // Sombra negra pura (controles del reproductor sobre el vídeo).
+  static Color sombra(double opacidad) => negro.withValues(alpha: opacidad);
 }
 
 // Espaciados estándar. Siempre múltiplos de 4 para mantener el ritmo visual.
@@ -93,6 +95,34 @@ abstract final class AppDuraciones {
   static const Duration ocultarControles = Duration(seconds: 3);
   static const Duration debounceBusqueda = Duration(milliseconds: 300);
   static const Duration shimmer = Duration(milliseconds: 1400);
+}
+
+// Medidas que se adaptan al ancho de la pantalla (móvil o tablet).
+// Así una misma pantalla se ve bien en 360 px y en una tablet de 1280 px.
+abstract final class AppMedidas {
+  // Ancho a partir del cual consideramos que es una tablet.
+  static const double anchoTablet = 600;
+  // Ancho máximo del contenido de lectura (ficha) en pantallas grandes.
+  static const double anchoMaximoLectura = 840;
+
+  // Ancho de los pósters de las filas horizontales.
+  static double anchoPoster(double anchoPantalla) {
+    if (anchoPantalla >= 1000) return 156;
+    if (anchoPantalla >= anchoTablet) return 136;
+    return 108;
+  }
+
+  // Número de columnas de las cuadrículas de pósters.
+  static int columnasRejilla(double ancho) => (ancho / 124).floor().clamp(3, 8);
+
+  // Altura del destacado: casi toda la pantalla, pero sin exagerar
+  // en móviles muy alargados ni en tablets apaisadas.
+  static double altoDestacado(Size pantalla) {
+    final alto = pantalla.height * 0.7;
+    final maximo = pantalla.width * 1.45;
+    if (alto > maximo) return maximo;
+    return alto < 360 ? 360 : alto;
+  }
 }
 
 // Tipografía. Usamos la fuente del sistema (sin descargas) con una
