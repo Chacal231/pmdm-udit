@@ -25,11 +25,18 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _pestana = 0;
 
-  static const List<Widget> _pantallas = [
-    CatalogoScreen(),
-    BuscarScreen(),
-    ArcadeScreen(),
-    MiListaScreen(),
+  void _irA(int pestana) {
+    // Al cambiar de pestaña cerramos el teclado si estaba abierto.
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => _pestana = pestana);
+  }
+
+  // Las pantallas se crean una sola vez y el IndexedStack las conserva.
+  late final List<Widget> _pantallas = [
+    CatalogoScreen(onAbrirArcade: () => _irA(2)),
+    const BuscarScreen(),
+    const ArcadeScreen(),
+    const MiListaScreen(),
   ];
 
   @override
@@ -40,19 +47,20 @@ class _HomeShellState extends State<HomeShell> {
         body: IndexedStack(
           index: _pestana,
           children: [
-            // HeroMode desactiva las animaciones Hero de las pestañas que
-            // no se ven, para que no interfieran con la pestaña visible.
+            // En las pestañas que no se ven desactivamos las animaciones
+            // Hero (para que no interfieran) y los tickers con TickerMode
+            // (así, por ejemplo, las miniaturas del Arcade no se animan
+            // en segundo plano gastando batería).
             for (var i = 0; i < _pantallas.length; i++)
-              HeroMode(enabled: i == _pestana, child: _pantallas[i]),
+              TickerMode(
+                enabled: i == _pestana,
+                child: HeroMode(enabled: i == _pestana, child: _pantallas[i]),
+              ),
           ],
         ),
         bottomNavigationBar: NavigationBar(
           selectedIndex: _pestana,
-          onDestinationSelected: (indice) {
-            // Al cambiar de pestaña cerramos el teclado si estaba abierto.
-            FocusManager.instance.primaryFocus?.unfocus();
-            setState(() => _pestana = indice);
-          },
+          onDestinationSelected: _irA,
           destinations: const [
             NavigationDestination(
               icon: Icon(Icons.home_outlined),

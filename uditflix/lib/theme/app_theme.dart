@@ -56,6 +56,42 @@ abstract final class AppColores {
   static Color sombra(double opacidad) => negro.withValues(alpha: opacidad);
 }
 
+// Paleta de los videojuegos del Arcade. Los juegos se dibujan por código,
+// así que también sus colores viven aquí y no repartidos por los archivos.
+abstract final class PaletaArcade {
+  // ---------- UDIT Flap ----------
+  static const Color cieloAlto = Color(0xFF1A0B3D);
+  static const Color cieloMedio = Color(0xFF4B1A6B);
+  static const Color cieloHorizonte = Color(0xFFE0457B);
+  static const Color skylineLejano = Color(0xFF2B1650);
+  static const Color skylineCercano = Color(0xFF160B2E);
+  static const Color ventana = Color(0xFFFFD27A);
+  static const Color suelo = Color(0xFF120A22);
+  static const Color sueloRaya = Color(0xFF2A1A4A);
+  static const Color palomita = Color(0xFFFFF4D6);
+  static const Color palomitaSombra = Color(0xFFF2D58A);
+  static const Color mantequilla = Color(0xFFFFC93C);
+  static const Color contorno = Color(0xFF5A3A12);
+  static const Color ojo = Color(0xFFFFFFFF);
+  static const Color pupila = Color(0xFF1B1B1B);
+  static const Color mejilla = Color(0xFFFF8FA3);
+  static const Color pelicula = Color(0xFF15131C);
+  static const Color peliculaFotograma = Color(0xFF241F33);
+  static const Color peliculaAgujero = Color(0xFF3B3452);
+
+  // ---------- Neon Breaker / Galaxy Run ----------
+  static const Color espacio = Color(0xFF05040C);
+  static const Color espacioClaro = Color(0xFF120B2B);
+  static const Color rejilla = Color(0xFF2A1B5C);
+  static const Color estrella = Color(0xFFFFFFFF);
+  static const Color naveCuerpo = Color(0xFFE6F7FF);
+  static const Color naveSombra = Color(0xFF7FA6C9);
+  static const Color propulsor = Color(0xFFFF9F1C);
+  static const Color enemigo = Color(0xFFB04BFF);
+  static const Color meteorito = Color(0xFF7A6458);
+  static const Color meteoritoSombra = Color(0xFF4A3B33);
+}
+
 // Espaciados estándar. Siempre múltiplos de 4 para mantener el ritmo visual.
 abstract final class AppEspacios {
   static const double xxs = 2;

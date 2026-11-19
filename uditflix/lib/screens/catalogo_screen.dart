@@ -7,6 +7,7 @@ import '../models/contenido.dart';
 import '../services/almacen_local.dart';
 // Importamos los colores centralizados del tema
 import '../theme/app_theme.dart';
+import '../widgets/banner_arcade.dart';
 import '../widgets/carrusel_destacados.dart';
 import '../widgets/fila_contenidos.dart';
 import '../widgets/logo_uditflix.dart';
@@ -24,7 +25,11 @@ import '../widgets/tarjeta_top10.dart';
 // scroll para cambiar la opacidad de la barra.
 class CatalogoScreen extends StatefulWidget {
   // Constructor de la pantalla
-  const CatalogoScreen({super.key});
+  const CatalogoScreen({super.key, this.onAbrirArcade});
+
+  // Acción del banner del Arcade (cambia a esa pestaña). Si es null,
+  // el banner no se muestra.
+  final VoidCallback? onAbrirArcade;
 
   @override
   State<CatalogoScreen> createState() => _CatalogoScreenState();
@@ -126,6 +131,9 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
       filas.add(FilaTop10(titulo: tituloTop, contenidos: top));
     }
     fila('Tendencias', 'tendencias', tendencias(filtro));
+    // Acceso destacado al Arcade entre las filas.
+    final abrirArcade = widget.onAbrirArcade;
+    if (abrirArcade != null) filas.add(BannerArcade(onTap: abrirArcade));
     if (filtro != 'Película') fila('Series', 'series', porCategoria('Serie'));
     if (filtro != 'Serie') {
       fila('Películas', 'peliculas', porCategoria('Película'));

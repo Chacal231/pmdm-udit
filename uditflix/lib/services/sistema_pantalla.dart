@@ -26,6 +26,14 @@ abstract final class SistemaPantalla {
     );
   }
 
+  // Los juegos del Arcade: siempre en vertical y a pantalla completa.
+  static Future<void> modoJuego() async {
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    await SystemChrome.setPreferredOrientations(const [
+      DeviceOrientation.portraitUp,
+    ]);
+  }
+
   static Future<void> modoReproductor() async {
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     await SystemChrome.setPreferredOrientations(const [
