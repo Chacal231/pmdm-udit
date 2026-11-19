@@ -193,7 +193,14 @@ class _PaginaDestacado extends StatelessWidget {
                     children: [
                       BotonMiLista(contenido: contenido),
                       const SizedBox(width: AppEspacios.s),
-                      BotonReproducir(contenido: contenido),
+                      // Si no cabe (pantalla estrecha o letra grande), el
+                      // botón se reduce en lugar de desbordarse.
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: BotonReproducir(contenido: contenido),
+                        ),
+                      ),
                       const SizedBox(width: AppEspacios.s),
                       BotonVertical(
                         icono: const Icon(Icons.info_outline_rounded),

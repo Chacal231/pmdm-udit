@@ -43,6 +43,10 @@ class Contenido {
   // Indica que es uno de los cortos libres de la Blender Foundation,
   // que tienen su propia fila en el catálogo.
   final bool esCortoLibre;
+  // Identificador del tráiler oficial en YouTube (lo que va tras "v=" en
+  // la URL). Es null si no hay un tráiler oficial que se pueda insertar:
+  // en ese caso la ficha no muestra el botón "Ver tráiler".
+  final String? trailerYoutubeId;
 
   // Constructor: permite crear nuevos Contenido
 
@@ -64,6 +68,7 @@ class Contenido {
     this.destacado = false,
     this.esTop10 = false,
     this.esCortoLibre = false,
+    this.trailerYoutubeId,
   });
 
   // Getters de ayuda: datos calculados a partir de los campos.

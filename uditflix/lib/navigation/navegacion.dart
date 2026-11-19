@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import '../models/contenido.dart';
 import '../screens/ficha_screen.dart';
 import '../screens/reproductor_screen.dart';
+import '../screens/trailer_screen.dart';
 import 'transiciones.dart';
 
 // Abre la ficha de un título. heroTag enlaza la portada de la tarjeta
@@ -27,4 +28,13 @@ Future<void> abrirFicha(
 Future<void> reproducir(BuildContext context, Contenido contenido) {
   return Navigator.of(context)
       .push(rutaUdit<void>(ReproductorScreen(contenido: contenido)));
+}
+
+// Abre el tráiler oficial de YouTube (solo si el título tiene uno).
+Future<void> verTrailer(BuildContext context, Contenido contenido) async {
+  final videoId = contenido.trailerYoutubeId;
+  if (videoId == null) return;
+  await Navigator.of(
+    context,
+  ).push(rutaUdit<void>(TrailerScreen(contenido: contenido, videoId: videoId)));
 }

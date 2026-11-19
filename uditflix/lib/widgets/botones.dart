@@ -35,6 +35,28 @@ class BotonReproducir extends StatelessWidget {
   }
 }
 
+// Botón "Ver tráiler": solo existe si el título tiene tráiler de YouTube.
+// Si no lo tiene, no ocupa espacio (devuelve un SizedBox vacío).
+class BotonTrailer extends StatelessWidget {
+  const BotonTrailer({super.key, required this.contenido});
+
+  final Contenido contenido;
+
+  @override
+  Widget build(BuildContext context) {
+    if (contenido.trailerYoutubeId == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: AppEspacios.s),
+      child: OutlinedButton.icon(
+        style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(46)),
+        onPressed: () => verTrailer(context, contenido),
+        icon: const Icon(Icons.smart_display_outlined),
+        label: const Text('Ver tráiler'),
+      ),
+    );
+  }
+}
+
 // Botón "Mi lista": añade o quita el título y lo guarda en el móvil.
 // Tiene dos formatos: vertical (icono + texto debajo, para el destacado)
 // y de ancho completo (para la ficha).

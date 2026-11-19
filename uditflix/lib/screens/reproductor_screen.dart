@@ -26,6 +26,7 @@ import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../data/contenidos.dart';
+import '../data/cortos_demo.dart';
 import '../models/contenido.dart';
 import '../models/progreso_visionado.dart';
 import '../navigation/transiciones.dart';
@@ -71,7 +72,11 @@ class _ReproductorScreenState extends State<ReproductorScreen>
 
   _Fase _fase = _Fase.cargando;
   bool _usandoRespaldo = false;
-  bool _avisoRespaldoVisible = false;
+  // Aviso discreto superior (vídeo de respaldo o episodio de demostración).
+  bool _avisoVisible = false;
+  String _avisoTexto = '';
+  IconData _avisoIcono = Icons.info_outline_rounded;
+  bool _avisoDemoMostrado = false;
   bool _controlesVisibles = true;
   // Lo que el usuario quiere: que suene o que esté en pausa. No usamos
   // directamente value.isPlaying porque ExoPlayer lo pone a false mientras
@@ -185,7 +190,10 @@ class _ReproductorScreenState extends State<ReproductorScreen>
     _temporizadorCarga?.cancel();
     if (!_usandoRespaldo) {
       // Primer fallo: plan B automático con aviso discreto.
-      _mostrarAvisoRespaldo();
+      _mostrarAviso(
+        'El vídeo no responde: reproduciendo uno de respaldo',
+        Icons.signal_wifi_statusbar_connected_no_internet_4_rounded,
+      );
       unawaited(_cargar(respaldo: true));
     } else {
       // También ha fallado el respaldo: mostramos el error.
@@ -194,12 +202,31 @@ class _ReproductorScreenState extends State<ReproductorScreen>
     }
   }
 
-  void _mostrarAvisoRespaldo() {
+  void _mostrarAviso(String texto, IconData icono) {
     _temporizadorAviso?.cancel();
-    setState(() => _avisoRespaldoVisible = true);
-    _temporizadorAviso = Timer(const Duration(seconds: 4), () {
-      if (mounted) setState(() => _avisoRespaldoVisible = false);
+    setState(() {
+      _avisoTexto = texto;
+      _avisoIcono = icono;
+      _avisoVisible = true;
     });
+    _temporizadorAviso = Timer(const Duration(milliseconds: 3500), () {
+      if (mounted) setState(() => _avisoVisible = false);
+    });
+  }
+
+  // La primera vez que arranca un título real avisamos de que lo que se
+  // ve es un corto libre de demostración (con su atribución CC BY).
+  void _avisarEpisodioDemo() {
+    if (_avisoDemoMostrado || _usandoRespaldo) return;
+    if (widget.contenido.esCortoLibre) return;
+    final corto = cortoPorUrl(widget.contenido.videoUrl);
+    if (corto == null) return;
+    _avisoDemoMostrado = true;
+    _mostrarAviso(
+      'Episodio de demostración · ${corto.titulo} '
+      '(Blender Foundation, CC BY)',
+      Icons.movie_filter_outlined,
+    );
   }
 
   Future<void> _empezar(Duration desde) async {
@@ -208,6 +235,7 @@ class _ReproductorScreenState extends State<ReproductorScreen>
     setState(() => _fase = _Fase.reproduciendo);
     if (desde > Duration.zero) await controlador.seekTo(desde);
     _reproducir(true);
+    if (mounted) _avisarEpisodioDemo();
   }
 
   // ------------------------------------------------------------------
@@ -514,7 +542,11 @@ class _ReproductorScreenState extends State<ReproductorScreen>
 
             ..._panelSegunFase(),
 
-            AvisoRespaldo(visible: _avisoRespaldoVisible),
+            AvisoDiscreto(
+              visible: _avisoVisible,
+              texto: _avisoTexto,
+              icono: _avisoIcono,
+            ),
           ],
         ),
       ),

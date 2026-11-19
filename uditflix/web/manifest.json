@@ -1,11 +1,11 @@
 {
-    "name": "uditflix",
-    "short_name": "uditflix",
+    "name": "UDITflix",
+    "short_name": "UDITflix",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0B0B0F",
+    "theme_color": "#E50914",
+    "description": "UDITflix: catálogo de streaming, reproductor y UDIT Arcade.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

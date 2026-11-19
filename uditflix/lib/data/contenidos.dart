@@ -8,46 +8,22 @@
 
 // Origen de los recursos (todas las URLs se han comprobado con curl):
 // - Pósters y fondos de títulos comerciales: The Movie Database (TMDB).
-// - Vídeos de demostración: películas libres de la Blender Foundation
-//   (Creative Commons BY), alojadas en Internet Archive. Los tráileres
-//   oficiales están en YouTube y video_player no puede reproducirlos.
+// - Vídeos de demostración: cortos libres de la Blender Foundation
+//   (Creative Commons BY), asignados según el género del título (ver
+//   cortos_demo.dart).
+// - Tráileres oficiales: IDs de YouTube comprobados con el servicio oEmbed
+//   (200 = existe y se puede insertar). Se ven con youtube_player_iframe.
 // - Imágenes de los cortos libres: fotogramas y carteles oficiales de la
 //   Blender Foundation (CC BY), empaquetados en assets/cortos/ para que
 //   funcionen sin conexión. Detalle en assets/cortos/CREDITOS.md.
 
 import '../models/contenido.dart';
+import 'cortos_demo.dart';
 
 // Prefijos de las imágenes de TMDB: w500 para pósters verticales
 // y w1280 para fondos horizontales.
 const String _poster = 'https://image.tmdb.org/t/p/w500';
 const String _fondo = 'https://image.tmdb.org/t/p/w1280';
-
-// Vídeos libres de la Blender Foundation (H.264 + AAC, aptos para Android).
-const String _videoBunny =
-    'https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4';
-const String _videoSintel =
-    'https://archive.org/download/Sintel/sintel-2048-stereo_512kb.mp4';
-const String _videoTears =
-    'https://archive.org/download/Tears-of-Steel/tears_of_steel_720p.mp4';
-const String _videoElephants =
-    'https://archive.org/download/ElephantsDream/ed_hd_512kb.mp4';
-
-// Vídeo de respaldo: muy ligero (2,4 MB) y alojado en GitHub Pages.
-// El reproductor lo usa si el vídeo principal falla o tarda demasiado.
-const String videoRespaldoUrl =
-    'https://flutter.github.io/assets-for-api-docs/assets/videos/butterfly.mp4';
-const String creditosVideoRespaldo =
-    'Vídeo de respaldo: «Butterfly» · © The Flutter Authors · licencia BSD';
-
-// Textos de atribución que exige la licencia CC BY.
-const String _creditosBunny =
-    'Vídeo de demostración: Big Buck Bunny © Blender Foundation · CC BY 3.0';
-const String _creditosSintel =
-    'Vídeo de demostración: Sintel © Blender Foundation · CC BY 3.0';
-const String _creditosTears =
-    'Vídeo de demostración: Tears of Steel © Blender Foundation · CC BY 3.0';
-const String _creditosElephants =
-    'Vídeo de demostración: Elephants Dream © Blender Foundation · CC BY 2.5';
 
 // Lista de contenidos que aparecerán en nuestra aplicación
 // Cada elemento de lista es un objeto de tipo Contenido
@@ -66,12 +42,13 @@ const List<Contenido> contenidos = [
     categoria: 'Serie',
     imagenUrl: '$_poster/49WJfeN0moxb9IPfGn8AIqMGskD.jpg',
     fondoUrl: '$_fondo/56v2KjBlU4XaOv9rVYEQypROD7P.jpg',
-    videoUrl: _videoTears,
+    videoUrl: urlTearsOfSteel,
     anio: 2016,
     edad: '16+',
     coincidencia: 98,
     generos: ['Ciencia ficción', 'Terror', 'Drama'],
-    creditosVideo: _creditosTears,
+    creditosVideo: creditosTearsOfSteel,
+    trailerYoutubeId: 'b9EkMc79ZSU',
     destacado: true,
     esTop10: true,
   ),
@@ -87,12 +64,13 @@ const List<Contenido> contenidos = [
     categoria: 'Serie',
     imagenUrl: '$_poster/9PFonBhy4cQy7Jz20NpMygczOkv.jpg',
     fondoUrl: '$_fondo/iHSwvRVsRyxpX7FE7GbviaDvgGZ.jpg',
-    videoUrl: _videoElephants,
+    videoUrl: urlBigBuckBunny,
     anio: 2022,
     edad: '13+',
     coincidencia: 96,
     generos: ['Misterio', 'Comedia', 'Fantasía'],
-    creditosVideo: _creditosElephants,
+    creditosVideo: creditosBigBuckBunny,
+    trailerYoutubeId: 'Di310WS8zLk',
     esTop10: true,
   ),
   Contenido(
@@ -107,12 +85,13 @@ const List<Contenido> contenidos = [
     categoria: 'Serie',
     imagenUrl: '$_poster/reEMJA1uzscCbkpeRJeTT2bjqUp.jpg',
     fondoUrl: '$_fondo/gFZriCkpJYsApPZEF3jhxL4yLzG.jpg',
-    videoUrl: _videoTears,
+    videoUrl: urlTearsOfSteel,
     anio: 2017,
     edad: '16+',
     coincidencia: 95,
     generos: ['Acción', 'Suspense', 'Crimen'],
-    creditosVideo: _creditosTears,
+    creditosVideo: creditosTearsOfSteel,
+    trailerYoutubeId: '_InqQJRqGW4',
     esTop10: true,
   ),
   Contenido(
@@ -127,12 +106,12 @@ const List<Contenido> contenidos = [
     categoria: 'Serie',
     imagenUrl: '$_poster/ggFHVNu6YYI5L9pCfOacjizRGt.jpg',
     fondoUrl: '$_fondo/tsRy63Mu5cu8etL1X7ZLyf7UP1M.jpg',
-    videoUrl: _videoSintel,
+    videoUrl: urlSintel,
     anio: 2008,
     edad: '18+',
     coincidencia: 97,
     generos: ['Drama', 'Crimen', 'Suspense'],
-    creditosVideo: _creditosSintel,
+    creditosVideo: creditosSintel,
   ),
   Contenido(
     id: 5,
@@ -146,12 +125,13 @@ const List<Contenido> contenidos = [
     categoria: 'Serie',
     imagenUrl: '$_poster/uKvVjHNqB5VmOrdxqAt2F7J78ED.jpg',
     fondoUrl: '$_fondo/uDgy6hyPd82kOHh6I95FLtLnj6p.jpg',
-    videoUrl: _videoTears,
+    videoUrl: urlSintel,
     anio: 2023,
     edad: '18+',
     coincidencia: 94,
     generos: ['Drama', 'Ciencia ficción', 'Acción'],
-    creditosVideo: _creditosTears,
+    creditosVideo: creditosSintel,
+    trailerYoutubeId: 'uLtkt8BonwM',
     esTop10: true,
   ),
   Contenido(
@@ -166,12 +146,13 @@ const List<Contenido> contenidos = [
     categoria: 'Serie',
     imagenUrl: '$_poster/dDlEmu3EZ0Pgg93K2SVNLCjCSvE.jpg',
     fondoUrl: '$_fondo/qw3J9cNeLioOLoR68WX7z79aCdK.jpg',
-    videoUrl: _videoSintel,
+    videoUrl: urlSintel,
     anio: 2021,
     edad: '18+',
     coincidencia: 93,
     generos: ['Suspense', 'Drama', 'Acción'],
-    creditosVideo: _creditosSintel,
+    creditosVideo: creditosSintel,
+    trailerYoutubeId: 'oqxAJKy0ii4',
     esTop10: true,
   ),
   Contenido(
@@ -186,12 +167,13 @@ const List<Contenido> contenidos = [
     categoria: 'Serie',
     imagenUrl: '$_poster/fqldf2t8ztc9aiwn3k6mlX3tvRT.jpg',
     fondoUrl: '$_fondo/rkB4LyZHo1NHXFEDHl9vSD9r1lI.jpg',
-    videoUrl: _videoSintel,
+    videoUrl: urlBigBuckBunny,
     anio: 2021,
     edad: '16+',
     coincidencia: 99,
     generos: ['Animación', 'Acción', 'Fantasía'],
-    creditosVideo: _creditosSintel,
+    creditosVideo: creditosBigBuckBunny,
+    trailerYoutubeId: 'fXmAurh012s',
     destacado: true,
     esTop10: true,
   ),
@@ -207,12 +189,13 @@ const List<Contenido> contenidos = [
     categoria: 'Serie',
     imagenUrl: '$_poster/apbrbWs8M9lyOpJYU5WXrpFbk1Z.jpg',
     fondoUrl: '$_fondo/5LoHuHWA4H8jElFlZDvsmU2n63b.jpg',
-    videoUrl: _videoElephants,
+    videoUrl: urlTearsOfSteel,
     anio: 2017,
     edad: '16+',
     coincidencia: 95,
     generos: ['Ciencia ficción', 'Misterio', 'Drama'],
-    creditosVideo: _creditosElephants,
+    creditosVideo: creditosTearsOfSteel,
+    trailerYoutubeId: 'ESEUoa-mz2c',
   ),
   Contenido(
     id: 9,
@@ -225,12 +208,13 @@ const List<Contenido> contenidos = [
     categoria: 'Serie',
     imagenUrl: '$_poster/vUUqzWa2LnHIVqkaKVlVGkVcZIW.jpg',
     fondoUrl: '$_fondo/wiE9doxiLwq3WCGamDIOb2PqBqc.jpg',
-    videoUrl: _videoBunny,
+    videoUrl: urlSintel,
     anio: 2013,
     edad: '18+',
     coincidencia: 91,
     generos: ['Drama', 'Crimen'],
-    creditosVideo: _creditosBunny,
+    creditosVideo: creditosSintel,
+    trailerYoutubeId: 'Ruyl8_PT_y8',
   ),
   Contenido(
     id: 10,
@@ -244,12 +228,13 @@ const List<Contenido> contenidos = [
     categoria: 'Serie',
     imagenUrl: '$_poster/eU1i6eHXlzMOlEq0ku1Rzq7Y4wA.jpg',
     fondoUrl: '$_fondo/9ijMGlJKqcslswWUzTEwScm82Gs.jpg',
-    videoUrl: _videoTears,
+    videoUrl: urlTearsOfSteel,
     anio: 2019,
     edad: '13+',
     coincidencia: 92,
     generos: ['Ciencia ficción', 'Aventura', 'Acción'],
-    creditosVideo: _creditosTears,
+    creditosVideo: creditosTearsOfSteel,
+    trailerYoutubeId: 'aOC8E8z_ifw',
   ),
 
   // ------------------------------ PELÍCULAS ------------------------------
@@ -264,12 +249,13 @@ const List<Contenido> contenidos = [
     categoria: 'Película',
     imagenUrl: '$_poster/ptpr0kGAckfQkJeJIt8st5dglvd.jpg',
     fondoUrl: '$_fondo/fm6KqXpk3M2HVveHwCrBSSBaO0V.jpg',
-    videoUrl: _videoElephants,
+    videoUrl: urlSintel,
     anio: 2023,
     edad: '16+',
     coincidencia: 97,
     generos: ['Drama', 'Historia'],
-    creditosVideo: _creditosElephants,
+    creditosVideo: creditosSintel,
+    trailerYoutubeId: 'uYPbbksJxIg',
     destacado: true,
     esTop10: true,
   ),
@@ -285,12 +271,13 @@ const List<Contenido> contenidos = [
     categoria: 'Película',
     imagenUrl: '$_poster/iuFNMS8U5cb6xfzi51Dbkovj7vM.jpg',
     fondoUrl: '$_fondo/ctMserH8g2SeOAnCw5gFjdQF8mo.jpg',
-    videoUrl: _videoBunny,
+    videoUrl: urlBigBuckBunny,
     anio: 2023,
     edad: '7+',
     coincidencia: 89,
     generos: ['Comedia', 'Aventura', 'Fantasía'],
-    creditosVideo: _creditosBunny,
+    creditosVideo: creditosBigBuckBunny,
+    trailerYoutubeId: 'pBk4NYhWNMM',
     esTop10: true,
   ),
   Contenido(
@@ -304,12 +291,13 @@ const List<Contenido> contenidos = [
     categoria: 'Película',
     imagenUrl: '$_poster/8Vt6mWEReuy4Of61Lnj5Xj704m8.jpg',
     fondoUrl: '$_fondo/4HodYYKEIsGOdinkGi2Ucz6X9i0.jpg',
-    videoUrl: _videoBunny,
+    videoUrl: urlBigBuckBunny,
     anio: 2023,
     edad: '7+',
     coincidencia: 96,
     generos: ['Animación', 'Acción', 'Aventura'],
-    creditosVideo: _creditosBunny,
+    creditosVideo: creditosBigBuckBunny,
+    trailerYoutubeId: 'cqGjhVJWtEg',
   ),
   Contenido(
     id: 14,
@@ -322,12 +310,13 @@ const List<Contenido> contenidos = [
     categoria: 'Película',
     imagenUrl: '$_poster/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg',
     fondoUrl: '$_fondo/xOMo8BRK7PfcJv9JCnx7s5hj0PX.jpg',
-    videoUrl: _videoTears,
+    videoUrl: urlTearsOfSteel,
     anio: 2024,
     edad: '13+',
     coincidencia: 98,
     generos: ['Ciencia ficción', 'Aventura', 'Drama'],
-    creditosVideo: _creditosTears,
+    creditosVideo: creditosTearsOfSteel,
+    trailerYoutubeId: 'Way9Dexny3w',
     destacado: true,
     esTop10: true,
   ),
@@ -343,12 +332,13 @@ const List<Contenido> contenidos = [
     categoria: 'Película',
     imagenUrl: '$_poster/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg',
     fondoUrl: '$_fondo/xJHokMbljvjADYdit5fK5VQsXEG.jpg',
-    videoUrl: _videoElephants,
+    videoUrl: urlTearsOfSteel,
     anio: 2014,
     edad: '13+',
     coincidencia: 97,
     generos: ['Ciencia ficción', 'Drama', 'Aventura'],
-    creditosVideo: _creditosElephants,
+    creditosVideo: creditosTearsOfSteel,
+    trailerYoutubeId: 'zSWdZVtXT7E',
   ),
   Contenido(
     id: 16,
@@ -362,12 +352,13 @@ const List<Contenido> contenidos = [
     categoria: 'Película',
     imagenUrl: '$_poster/9gk7adHYeDvHkCSEqAvQNLV5Uge.jpg',
     fondoUrl: '$_fondo/s3TBrRGB1iav7gFOCNx3H31MoES.jpg',
-    videoUrl: _videoTears,
+    videoUrl: urlTearsOfSteel,
     anio: 2010,
     edad: '13+',
     coincidencia: 95,
     generos: ['Ciencia ficción', 'Acción', 'Suspense'],
-    creditosVideo: _creditosTears,
+    creditosVideo: creditosTearsOfSteel,
+    trailerYoutubeId: 'YoHD9XEInc0',
   ),
   Contenido(
     id: 17,
@@ -380,12 +371,13 @@ const List<Contenido> contenidos = [
     categoria: 'Película',
     imagenUrl: '$_poster/gGEsBPAijhVUFoiNpgZXqRVWJt2.jpg',
     fondoUrl: '$_fondo/askg3SMvhqEl4OL52YuvdtY40Yb.jpg',
-    videoUrl: _videoBunny,
+    videoUrl: urlBigBuckBunny,
     anio: 2017,
     edad: '7+',
     coincidencia: 94,
     generos: ['Animación', 'Familia', 'Fantasía'],
-    creditosVideo: _creditosBunny,
+    creditosVideo: creditosBigBuckBunny,
+    trailerYoutubeId: 'xlnPHQ3TLX8',
   ),
   Contenido(
     id: 18,
@@ -399,12 +391,13 @@ const List<Contenido> contenidos = [
     categoria: 'Película',
     imagenUrl: '$_poster/62HCnUTziyWcpDaBO2i1DX17ljH.jpg',
     fondoUrl: '$_fondo/AaV1YIdWKnjAIAOe8UUKBFm327v.jpg',
-    videoUrl: _videoTears,
+    videoUrl: urlTearsOfSteel,
     anio: 2022,
     edad: '13+',
     coincidencia: 90,
     generos: ['Acción', 'Drama'],
-    creditosVideo: _creditosTears,
+    creditosVideo: creditosTearsOfSteel,
+    trailerYoutubeId: 'giXco2jaZ_4',
   ),
   Contenido(
     id: 19,
@@ -418,12 +411,13 @@ const List<Contenido> contenidos = [
     categoria: 'Película',
     imagenUrl: '$_poster/vpnVM9B6NMmQpWeZvzLvDESb2QY.jpg',
     fondoUrl: '$_fondo/stKGOm8UyhuLPR9sZLjs5AkmncA.jpg',
-    videoUrl: _videoBunny,
+    videoUrl: urlBigBuckBunny,
     anio: 2024,
     edad: '7+',
     coincidencia: 92,
     generos: ['Animación', 'Familia', 'Comedia'],
-    creditosVideo: _creditosBunny,
+    creditosVideo: creditosBigBuckBunny,
+    trailerYoutubeId: 'LEjhY15eCx0',
     esTop10: true,
   ),
   Contenido(
@@ -438,12 +432,13 @@ const List<Contenido> contenidos = [
     categoria: 'Película',
     imagenUrl: '$_poster/74xTEgt7R36Fpooo50r9T25onhq.jpg',
     fondoUrl: '$_fondo/b0PlSFdDwbyK0cf5RxwDpaOJQvQ.jpg',
-    videoUrl: _videoSintel,
+    videoUrl: urlTearsOfSteel,
     anio: 2022,
     edad: '16+',
     coincidencia: 93,
     generos: ['Crimen', 'Misterio', 'Acción'],
-    creditosVideo: _creditosSintel,
+    creditosVideo: creditosTearsOfSteel,
+    trailerYoutubeId: 'mqqft2x_Aa4',
   ),
   Contenido(
     id: 21,
@@ -457,12 +452,13 @@ const List<Contenido> contenidos = [
     categoria: 'Película',
     imagenUrl: '$_poster/udDclJoHjfjb8Ekgsd4FDteOkCU.jpg',
     fondoUrl: '$_fondo/hO7KbdvGOtDdeg0W4Y5nKEHeDDh.jpg',
-    videoUrl: _videoElephants,
+    videoUrl: urlSintel,
     anio: 2019,
     edad: '18+',
     coincidencia: 88,
     generos: ['Crimen', 'Suspense', 'Drama'],
-    creditosVideo: _creditosElephants,
+    creditosVideo: creditosSintel,
+    trailerYoutubeId: 'zAGVQLHvwOY',
   ),
   Contenido(
     id: 22,
@@ -476,12 +472,13 @@ const List<Contenido> contenidos = [
     categoria: 'Película',
     imagenUrl: '$_poster/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg',
     fondoUrl: '$_fondo/hiKmpZMGZsrkA3cdce8a7Dpos1j.jpg',
-    videoUrl: _videoSintel,
+    videoUrl: urlSintel,
     anio: 2019,
     edad: '16+',
     coincidencia: 91,
     generos: ['Suspense', 'Drama', 'Comedia'],
-    creditosVideo: _creditosSintel,
+    creditosVideo: creditosSintel,
+    trailerYoutubeId: '5xH0HfJHsaY',
   ),
 
   // ---------------- CORTOS DE ANIMACIÓN LIBRES (Blender) -----------------
@@ -499,7 +496,7 @@ const List<Contenido> contenidos = [
     categoria: 'Película',
     imagenUrl: 'assets/cortos/big_buck_bunny_poster.jpg',
     fondoUrl: 'assets/cortos/big_buck_bunny_fondo.jpg',
-    videoUrl: _videoBunny,
+    videoUrl: urlBigBuckBunny,
     anio: 2008,
     edad: '7+',
     coincidencia: 90,
@@ -519,7 +516,7 @@ const List<Contenido> contenidos = [
     categoria: 'Película',
     imagenUrl: 'assets/cortos/sintel_poster.jpg',
     fondoUrl: 'assets/cortos/sintel_fondo.jpg',
-    videoUrl: _videoSintel,
+    videoUrl: urlSintel,
     anio: 2010,
     edad: '13+',
     coincidencia: 94,
@@ -539,7 +536,7 @@ const List<Contenido> contenidos = [
     categoria: 'Película',
     imagenUrl: 'assets/cortos/tears_of_steel_poster.jpg',
     fondoUrl: 'assets/cortos/tears_of_steel_fondo.jpg',
-    videoUrl: _videoTears,
+    videoUrl: urlTearsOfSteel,
     anio: 2012,
     edad: '13+',
     coincidencia: 87,
@@ -559,7 +556,7 @@ const List<Contenido> contenidos = [
     categoria: 'Película',
     imagenUrl: 'assets/cortos/elephants_dream_poster.jpg',
     fondoUrl: 'assets/cortos/elephants_dream_fondo.jpg',
-    videoUrl: _videoElephants,
+    videoUrl: urlElephantsDream,
     anio: 2006,
     edad: '13+',
     coincidencia: 86,

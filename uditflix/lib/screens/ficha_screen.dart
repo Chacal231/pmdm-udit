@@ -357,6 +357,7 @@ class _Detalles extends StatelessWidget {
           BotonReproducir(contenido: contenido, anchoCompleto: true),
           const SizedBox(height: AppEspacios.s),
           BotonMiLista(contenido: contenido, anchoCompleto: true),
+          BotonTrailer(contenido: contenido),
           const SizedBox(height: AppEspacios.l),
           Text(contenido.descripcion, style: AppTexto.cuerpo),
           const SizedBox(height: AppEspacios.m),

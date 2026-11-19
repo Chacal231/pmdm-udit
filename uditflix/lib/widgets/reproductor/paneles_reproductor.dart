@@ -5,7 +5,8 @@
 //   - PanelReanudar: "Reanudar desde mm:ss" o "Desde el principio".
 //   - PanelFin: al terminar, "Ver de nuevo" y una sugerencia.
 //   - PanelError: si no se puede cargar, con el botón "Reintentar".
-//   - AvisoRespaldo: aviso discreto cuando se usa el vídeo de respaldo.
+//   - AvisoDiscreto: mensaje breve arriba (vídeo de respaldo, episodio
+//     de demostración…).
 // El reproductor va en horizontal y la altura disponible es pequeña,
 // por eso todos los paneles son compactos y pueden desplazarse.
 
@@ -332,11 +333,18 @@ class PanelError extends StatelessWidget {
   }
 }
 
-// Aviso discreto en la parte superior.
-class AvisoRespaldo extends StatelessWidget {
-  const AvisoRespaldo({super.key, required this.visible});
+// Aviso discreto en la parte superior que entra deslizándose.
+class AvisoDiscreto extends StatelessWidget {
+  const AvisoDiscreto({
+    super.key,
+    required this.visible,
+    required this.texto,
+    required this.icono,
+  });
 
   final bool visible;
+  final String texto;
+  final IconData icono;
 
   @override
   Widget build(BuildContext context) {
@@ -361,22 +369,12 @@ class AvisoRespaldo extends StatelessWidget {
                   color: AppColores.superficieAlta.withValues(alpha: 0.95),
                   borderRadius: BorderRadius.circular(AppRadios.pastilla),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons
-                          .signal_wifi_statusbar_connected_no_internet_4_rounded,
-                      size: 18,
-                      color: AppColores.textoSecundario,
-                    ),
-                    SizedBox(width: AppEspacios.s),
-                    Flexible(
-                      child: Text(
-                        'El vídeo no responde: reproduciendo uno de respaldo',
-                        style: AppTexto.etiqueta,
-                      ),
-                    ),
+                    Icon(icono, size: 18, color: AppColores.textoSecundario),
+                    const SizedBox(width: AppEspacios.s),
+                    Flexible(child: Text(texto, style: AppTexto.etiqueta)),
                   ],
                 ),
               ),
