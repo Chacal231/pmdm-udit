@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 
 // Importamos la lista de contenidos simulados
 import '../data/contenidos.dart';
+// Importamos los colores centralizados del tema
+import '../theme/app_theme.dart';
 
 // Creamos la pantalla de catálogo
 class CatalogoScreen extends StatelessWidget {
@@ -16,12 +18,8 @@ class CatalogoScreen extends StatelessWidget {
     return Scaffold(
       //Barra superior de la aplicación
       appBar: AppBar(
-        // Texto que aparece en la barra superior
-        title: const Text('UDITflix'),
-        // Color de fondo de barra
-        backgroundColor: Colors.deepPurple,
-        // Color de texto y de los iconos de barra,
-        foregroundColor: Colors.white,
+        // Texto que aparece en la barra superior (colores desde el tema)
+        title: const Text('UDITflix', style: AppTexto.logo),
       ),
       // ListView.builder crea una lista desplezable
 
@@ -41,13 +39,13 @@ class CatalogoScreen extends StatelessWidget {
               // Icono que aparece a la izquierda de la tarjeta
               leading: const Icon(
                 Icons.play_circle_fill,
-                color: Colors.deepPurple,
+                color: AppColores.rojo,
               ),
 
               // Mostramos el título
               title: Text(contenido.titulo),
-              // Mostramos el tipo de contenido
-              subtitle: Text(contenido.tipo),
+              // Mostramos la categoría y el año de estreno
+              subtitle: Text('${contenido.categoria} · ${contenido.anio}'),
               // Icono que aparece a la derecha de la tarjeta
               trailing: const Icon(Icons.arrow_forward_ios),
             ),

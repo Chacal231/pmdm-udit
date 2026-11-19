@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Colores de marca de UDITflix usados por Android antes de que arranque Flutter. -->
+<resources>
+    <color name="uditflix_fondo">#0B0B0F</color>
+    <color name="uditflix_rojo">#E50914</color>
+    <color name="uditflix_rojo_oscuro">#8C0610</color>
+</resources>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icono propio de UDITflix: una "U" roja dibujada con un trazo vectorial.
+     Lienzo de 108dp (icono adaptativo); la letra queda dentro de la
+     zona segura central de 66dp. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Sombra desplazada para dar volumen. -->
+    <path
+        android:pathData="M43.5,34.5 V57 A12,12 0 0 0 67.5,57 V34.5"
+        android:strokeColor="@color/uditflix_rojo_oscuro"
+        android:strokeWidth="11"
+        android:strokeLineCap="butt"
+        android:fillColor="#00000000" />
+    <!-- Letra principal. -->
+    <path
+        android:pathData="M42,33 V57 A12,12 0 0 0 66,57 V33"
+        android:strokeColor="@color/uditflix_rojo"
+        android:strokeWidth="11"
+        android:strokeLineCap="butt"
+        android:fillColor="#00000000" />
+</vector>

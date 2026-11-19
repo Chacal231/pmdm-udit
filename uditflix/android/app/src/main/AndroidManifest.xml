@@ -1,6 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Permiso de red: sin él, en el APK release no cargarían
+         ni las portadas ni los vídeos. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
-        android:label="uditflix"
+        android:label="UDITflix"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

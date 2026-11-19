@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 
 import 'screens/catalogo_screen.dart';
+import 'services/almacen_local.dart';
+import 'theme/app_theme.dart';
 
 // Punto de entrada de aplicación
 
-void main() {
+Future<void> main() async {
+  // Necesario para usar plugins (shared_preferences) antes de runApp.
+  WidgetsFlutterBinding.ensureInitialized();
+  // Cargamos Mi lista, Continuar viendo y los récords guardados.
+  await AlmacenLocal.instancia.iniciar();
   runApp(const MyApp());
 }
 
@@ -20,21 +26,10 @@ class MyApp extends StatelessWidget {
       title: 'UDITflix',
       // Ocultamos la etiqueta DEBUG
       debugShowCheckedModeBanner: false,
-      // Configuracion visual general.
-      theme: ThemeData(
-        useMaterial3: true,
-        // Color principal de nuestra aplicación
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5B2D90)),
-        // Color de fondo de pantallas
-        scaffoldBackgroundColor: const Color(0xFFF7F5FA),
-
-        // Aspecto de la barra superior
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF5B2D90),
-          foregroundColor: Colors.white,
-          centerTitle: false,
-        ),
-      ),
+      // Configuración visual general: el tema oscuro de lib/theme/app_theme.dart
+      theme: AppTheme.oscuro,
+      darkTheme: AppTheme.oscuro,
+      themeMode: ThemeMode.dark,
 
       // Primera pantalla que verá el usuario
       home: const CatalogoScreen(),
